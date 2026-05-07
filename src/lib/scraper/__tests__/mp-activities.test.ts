@@ -48,4 +48,21 @@ describe("scrapeMpActivities parsers (PoslanecID=1114)", () => {
   it("returns empty array for trips 'no records' message", () => {
     expect(parseForeignTripsList(F("mp_trips_1114.html"), "x")).toEqual([]);
   });
+
+  it("parses populated interpellations list (MP 1116)", () => {
+    const rows = parseInterpellationsList(F("mp_interpellations_1116.html"));
+    expect(rows.length).toBeGreaterThan(0);
+    const r = rows[0];
+    expect(r.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(r.subject.length).toBeGreaterThan(5);
+    expect(r.url).toContain("schodze/interpelacia");
+    expect(r.addressee).toBeTruthy();
+  });
+
+  it("parses populated foreign trips list (MP 929)", () => {
+    const rows = parseForeignTripsList(F("mp_trips_929.html"), "x");
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows[0].date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(rows[0].country.length).toBeGreaterThan(0);
+  });
 });

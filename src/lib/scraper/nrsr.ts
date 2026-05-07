@@ -630,15 +630,15 @@ function parseTabZoznamRows(
 export function parseInterpellationsList(html: string): ScrapedInterpellation[] {
   const $ = cheerio.load(html);
   const out: ScrapedInterpellation[] = [];
-  // Columns observed: [Stav, Dátum, Predkladateľ, Adresát, Predmet/Otázka]
+  // Columns observed: [Popis, Stav, Dátum, Zadávateľ, Klub, Adresát]
   const rows = parseTabZoznamRows($, "table.tab_zoznam");
   for (const r of rows) {
-    if (r.cells.length < 5) continue;
-    const date = parseSlovakDate(r.cells[1]);
+    if (r.cells.length < 6) continue;
+    const subject = r.cells[0];
+    const date = parseSlovakDate(r.cells[2]);
     if (!date) continue;
-    const addressee = r.cells[3] || null;
-    const subject = r.cells[4];
-    const $link = r.row.find("a[href*='interpelacie_detail']").first();
+    const addressee = r.cells[5] || null;
+    const $link = r.row.find("a[href*='schodze/interpelacia']").first();
     const href = $link.attr("href") ?? "";
     if (!href) continue;
     const url = absUrl(href);
@@ -718,22 +718,25 @@ export function parseForeignTripsList(html: string, sourceUrl: string): ScrapedF
   const msg = $("#_sectionLayoutContainer_ctl01__Message").text();
   if (msg && /nie je evidovan/i.test(msg)) return [];
   const out: ScrapedForeignTrip[] = [];
-  // Schema not captured (Šimečka has none). Fallback: tab_zoznam rows.
+  // Columns observed: [Dátum, Popis pracovnej cesty]. Date may be a range
+  // ("12. - 15. 1. 2025"); country is the first segment of Popis before " - ".
   const rows = parseTabZoznamRows($, "table.tab_zoznam");
   for (const r of rows) {
     if (r.cells.length < 2) continue;
-    let date: string | null = null;
-    let country = "";
-    let purpose: string | null = null;
-    let cost: number | null = null;
-    for (const c of r.cells) {
-      if (!date) { const d = parseSlovakDate(c); if (d) { date = d; continue; } }
-      if (!country && c && c.length < 40) { country = c; continue; }
-      if (/€/.test(c) && cost === null) { cost = parseEur(c); continue; }
-      if (!purpose && c.length > 15) purpose = c;
-    }
-    if (!date || !country) continue;
-    out.push({ date, country, purpose, costEur: cost, sourceUrl });
+    const dateRaw = r.cells[0];
+    const popis = r.cells[1];
+    if (!dateRaw || !popis) continue;
+    // Pick the LAST date token in the range — that's the canonical d.m.y.
+    const lastDateMatch = dateRaw.match(/(\d{1,2}\.\s*\d{1,2}\.\s*\d{4})/g);
+    const date = lastDateMatch
+      ? parseSlovakDate(lastDateMatch[lastDateMatch.length - 1])
+      : parseSlovakDate(dateRaw);
+    if (!date) continue;
+    const dashIdx = popis.indexOf(" - ");
+    const country = (dashIdx > 0 ? popis.slice(0, dashIdx) : popis).trim();
+    const purpose = dashIdx > 0 ? popis.slice(dashIdx + 3).trim() : null;
+    if (!country) continue;
+    out.push({ date, country, purpose, costEur: null, sourceUrl });
   }
   return out;
 }
