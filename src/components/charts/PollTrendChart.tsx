@@ -11,6 +11,7 @@ import {
   ReferenceLine,
   Legend,
 } from "recharts";
+import type { TooltipContentProps } from "recharts";
 
 interface Party {
   id: string;
@@ -23,13 +24,73 @@ interface PollTrendChartProps {
   parties: Party[];
 }
 
+function CustomTooltip({
+  active,
+  payload,
+  label,
+  parties,
+}: TooltipContentProps & { parties: Party[] }) {
+  if (!active || !payload?.length) return null;
+
+  const sortedPayload = [...payload]
+    .filter((entry) => Number.isFinite(Number(entry.value)))
+    .sort((a, b) => (Number(b.value) || 0) - (Number(a.value) || 0));
+
+  return (
+    <div
+      className="min-w-[190px] border px-3 py-3 shadow-[0_14px_30px_rgba(17,17,16,0.18)]"
+      style={{
+        borderRadius: 0,
+        backgroundColor: "var(--bg-card)",
+        borderColor: "var(--border-strong)",
+        boxShadow:
+          "0 0 0 6px var(--bg-page), 0 14px 30px rgba(17,17,16,0.18)",
+      }}
+    >
+      <p className="mb-2 text-sm font-semibold text-ink">{String(label)}</p>
+      <ul className="space-y-1.5">
+        {sortedPayload.map((entry, index) => {
+          const value = Number(entry.value);
+          const party = parties.find((item) => item.id === entry.dataKey);
+          const isTopThree = index < 3;
+
+          return (
+            <li
+              key={String(entry.dataKey)}
+              className="flex items-center justify-between gap-3 text-sm"
+              style={{
+                opacity: isTopThree ? 1 : 0.72,
+                fontWeight: isTopThree ? 700 : 500,
+              }}
+            >
+              <span className="flex items-center gap-2 text-ink">
+                <span
+                  className="shrink-0 rounded-full"
+                  style={{
+                    backgroundColor: party?.color ?? entry.color ?? "var(--ink)",
+                    width: isTopThree ? 11 : 9,
+                    height: isTopThree ? 11 : 9,
+                    boxShadow: isTopThree ? "0 0 0 2px rgba(255,255,255,0.9)" : "none",
+                  }}
+                />
+                <span>{party?.abbreviation ?? String(entry.name ?? entry.dataKey)}</span>
+              </span>
+              <span className="tabular-nums text-ink">{value.toFixed(1)}%</span>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
 export default function PollTrendChart({ data, parties }: PollTrendChartProps) {
   const visibleParties = parties.filter((p) =>
     data.some((d) => typeof d[p.id] === "number" && (d[p.id] as number) > 0)
   );
 
   return (
-    <div className="w-full h-[300px] sm:h-[400px] lg:h-[500px]">
+    <div className="w-full max-w-[980px] mx-auto aspect-[4/3] min-h-[300px] max-h-[560px] sm:aspect-[16/10] lg:aspect-[16/9]">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data} margin={{ top: 10, right: 20, left: -10, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--divider)" />
@@ -48,19 +109,9 @@ export default function PollTrendChart({ data, parties }: PollTrendChartProps) {
           />
           <Tooltip
             itemSorter={(item) => -(Number(item.value) || 0)}
-            contentStyle={{
-              backgroundColor: "var(--surface)",
-              border: "1px solid var(--ink)",
-              borderRadius: "0",
-              padding: "12px",
-              fontSize: "13px",
-              color: "var(--text)",
-            }}
-            formatter={(value, name) => {
-              const party = parties.find((p) => p.id === name);
-              return [`${Number(value).toFixed(1)}%`, party?.abbreviation ?? String(name)];
-            }}
-            labelStyle={{ fontWeight: 600, color: "var(--ink)" }}
+            content={(props) => <CustomTooltip {...props} parties={parties} />}
+            cursor={{ stroke: "rgba(17,17,16,0.18)", strokeWidth: 1 }}
+            wrapperStyle={{ outline: "none", zIndex: 20 }}
           />
           <Legend
             content={() => (

@@ -27,23 +27,25 @@ export default function MpFilters({ parties }: MpFiltersProps) {
           params.delete(key);
         }
       }
-      // Reset to page 1 on filter change
       params.delete("page");
       router.push(`?${params.toString()}`);
     },
     [router, searchParams]
   );
 
+  const currentParty = searchParams.get("party") ?? "";
+  const currentSearch = searchParams.get("search") ?? "";
+  const currentView = searchParams.get("view") ?? "grouped";
+  const [inputValue, setInputValue] = useState(currentSearch);
+
   const handlePartyChange = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
-      pushParams({ party: e.target.value || null });
+      const val = e.target.value || null;
+      // Selecting a single party forces flat view; clearing returns to grouped
+      pushParams({ party: val, view: val ? "flat" : null });
     },
     [pushParams]
   );
-
-  const currentParty = searchParams.get("party") ?? "";
-  const currentSearch = searchParams.get("search") ?? "";
-  const [inputValue, setInputValue] = useState(currentSearch);
 
   const handleSearchChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -51,14 +53,22 @@ export default function MpFilters({ parties }: MpFiltersProps) {
       setInputValue(value);
       if (debounceRef.current) clearTimeout(debounceRef.current);
       debounceRef.current = setTimeout(() => {
-        pushParams({ search: value || null });
+        // Search forces flat view (so matches across all parties show in one list)
+        pushParams({ search: value || null, view: value ? "flat" : null });
       }, 300);
     },
     [pushParams]
   );
 
+  const setView = useCallback(
+    (view: "grouped" | "flat") => {
+      pushParams({ view: view === "grouped" ? null : "flat" });
+    },
+    [pushParams]
+  );
+
   return (
-    <div className="flex flex-wrap gap-2 mb-6">
+    <div className="flex flex-wrap gap-2 mb-6 items-center">
       <select
         value={currentParty}
         onChange={handlePartyChange}
@@ -79,6 +89,31 @@ export default function MpFilters({ parties }: MpFiltersProps) {
         onChange={handleSearchChange}
         className="border border-border bg-surface text-sm px-3 py-2 text-ink placeholder:text-muted min-w-[200px]"
       />
+
+      <div className="ml-auto inline-flex border border-border">
+        <button
+          type="button"
+          onClick={() => setView("grouped")}
+          className={`px-3 py-2 text-xs font-mono uppercase tracking-wide ${
+            currentView === "grouped"
+              ? "bg-ink text-card"
+              : "bg-surface text-ink hover:bg-hover"
+          }`}
+        >
+          Podľa strán
+        </button>
+        <button
+          type="button"
+          onClick={() => setView("flat")}
+          className={`px-3 py-2 text-xs font-mono uppercase tracking-wide border-l border-border ${
+            currentView === "flat"
+              ? "bg-ink text-card"
+              : "bg-surface text-ink hover:bg-hover"
+          }`}
+        >
+          Všetci
+        </button>
+      </div>
     </div>
   );
 }

@@ -6,6 +6,7 @@
   --color-card: var(--bg-card);
   --color-subtle: var(--bg-subtle);
   --color-muted-bg: var(--bg-muted);
+  --color-paper: var(--bg-page);
   --color-border: var(--border-color);
   --color-border-strong: var(--border-strong);
   --color-ink: var(--text-primary);
@@ -14,10 +15,18 @@
   --color-faint: var(--text-faint);
   --color-xfaint: var(--text-xfaint);
   --color-accent: var(--accent-blue);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-border: var(--accent-border);
+  --color-info: var(--accent-blue);
   --color-success: #16a34a;
   --color-success-bg: #dcfce7;
+  --color-success-border: #bbf7d0;
   --color-danger: #dc2626;
   --color-danger-bg: #fee2e2;
+  --color-danger-border: #fecaca;
+  --color-warning: #ca8a04;
+  --color-warning-bg: #fef9c3;
+  --color-warning-border: #fde68a;
   --color-btn-primary: var(--btn-primary-bg);
   --color-btn-primary-text: var(--btn-primary-text);
   --color-footer: var(--footer-bg);
@@ -41,13 +50,28 @@
   /* Typography */
   --font-sans: var(--font-dm-sans);
   --font-serif: var(--font-dm-serif);
+  --text-micro: 0.625rem;
+  --text-micro--line-height: 1rem;
+  --text-caption: 0.6875rem;
+  --text-caption--line-height: 1rem;
+  --text-body-sm: 0.8125rem;
+  --text-body-sm--line-height: 1.25rem;
+  --text-page-title: 1.75rem;
+  --text-page-title--line-height: 2.125rem;
 
   /* Spacing */
   --max-width-content: 1100px;
   --nav-height: 52px;
-  --radius-card: 0px;
-  --radius-btn: 0px;
-  --radius-pill: 0px;
+  --radius-xs: 0.125rem;
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-card: 0.625rem;
+  --radius-panel: 0.75rem;
+  --radius-btn: 0.5rem;
+  --radius-pill: 999px;
+  --shadow-panel: 0 14px 30px rgba(17, 17, 16, 0.08);
 }
 
 :root {
@@ -64,6 +88,8 @@
   --text-faint: #aaaaaa;
   --text-xfaint: #bbbbbb;
   --accent-blue: #1a6eb5;
+  --accent-soft: #e8f2fb;
+  --accent-border: #bfdbf2;
   --btn-primary-bg: #1a1a1a;
   --btn-primary-text: #ffffff;
   --footer-bg: #1a1a1a;
@@ -83,6 +109,8 @@
   --text-faint: #4a4540;
   --text-xfaint: #3a3530;
   --accent-blue: #4d9de0;
+  --accent-soft: #12263a;
+  --accent-border: #24486c;
   --btn-primary-bg: #f0ede6;
   --btn-primary-text: #0f0f0f;
   --footer-bg: #0a0a0a;
@@ -137,6 +165,28 @@ h1, h2, h3 {
   letter-spacing: -0.02em;
 }
 
+/* Navbar always light — override dark theme tokens within header */
+[data-navbar-light] {
+  --bg-page: #f8f5f0;
+  --bg-card: #ffffff;
+  --bg-subtle: #f0ede6;
+  --bg-muted: #f8f5f0;
+  --border-color: #e8e3db;
+  --border-strong: #d0cbc3;
+  --text-primary: #1a1a1a;
+  --text-secondary: #444444;
+  --text-muted: #888888;
+  --text-faint: #aaaaaa;
+  --text-xfaint: #bbbbbb;
+  --accent-blue: #1a6eb5;
+  --accent-soft: #e8f2fb;
+  --accent-border: #bfdbf2;
+  --btn-primary-bg: #1a1a1a;
+  --btn-primary-text: #ffffff;
+  background: #ffffff;
+  color-scheme: light;
+}
+
 /* Navbar logo cross-fade */
 .logo-swap { display: inline-grid; }
 .logo-swap > * { grid-area: 1 / 1; transition: opacity 150ms ease; }
@@ -147,7 +197,7 @@ h1, h2, h3 {
 
 /* Micro-labels — uppercase section headers */
 .micro-label {
-  font-size: 11px;
+  font-size: var(--text-caption);
   text-transform: uppercase;
   letter-spacing: 0.1em;
   opacity: 0.4;
@@ -197,6 +247,47 @@ h1, h2, h3 {
 
 @utility max-w-content {
   max-width: var(--max-width-content);
+}
+
+@utility h-nav {
+  height: var(--nav-height);
+}
+
+@utility size-nav-count {
+  width: var(--nav-height);
+  height: 2.25rem;
+}
+
+@utility feature-grid {
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+@utility rounded-panel {
+  border-radius: var(--radius-panel);
+}
+
+@utility rounded-card {
+  border-radius: var(--radius-card);
+}
+
+@utility rounded-btn {
+  border-radius: var(--radius-btn);
+}
+
+@utility rounded-pill {
+  border-radius: var(--radius-pill);
+}
+
+@utility shadow-panel {
+  box-shadow: var(--shadow-panel);
+}
+
+@utility text-label {
+  font-size: var(--text-caption);
+  line-height: var(--text-caption--line-height);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
 /* === View Transitions === */
@@ -262,4 +353,3 @@ h1, h2, h3 {
     font-size: 0.7rem;
   }
 }
-

@@ -10,12 +10,100 @@ import type {
 
 const CHUNK = 50;
 
+/**
+ * Manual NRSR person ID → internal party ID overrides.
+ * Use for MPs whose NRSR record doesn't reflect their real political affiliation
+ * (e.g. defectors who founded a new party but NRSR still files them under
+ * their original ticket or in the "nezavisli" club).
+ *
+ * Applied BEFORE the independent-flip logic — these MPs will NOT get NULL
+ * party_id even if NRSR's "nezavisli" page lists them.
+ */
+export const MANUAL_PARTY_OVERRIDES: Record<string, string> = {
+  // Strana vidieka — Huliak's faction (formally in NRSR's "nezavisli" club).
+  // Huliak (NRSR ID 1148) is omitted: minister with suspended mandate, not a sitting MP.
+  "1150": "vidieka", // Ivan Ševčík
+  "1152": "vidieka", // Pavol Ľupták
+  "1173": "vidieka", // Roman Malatinec
+};
+
 function chunks<T>(arr: T[], size: number): T[][] {
   const result: T[][] = [];
   for (let i = 0; i < arr.length; i += size) {
     result.push(arr.slice(i, i + size));
   }
   return result;
+}
+
+function normalizePartyKey(raw: string): string {
+  return raw
+    .toLowerCase()
+    .trim()
+    .replace(/[áä]/g, "a")
+    .replace(/[čć]/g, "c")
+    .replace(/[ď]/g, "d")
+    .replace(/[éě]/g, "e")
+    .replace(/[íî]/g, "i")
+    .replace(/[ĺľ]/g, "l")
+    .replace(/[ňń]/g, "n")
+    .replace(/[óô]/g, "o")
+    .replace(/[řŕ]/g, "r")
+    .replace(/[šś]/g, "s")
+    .replace(/[ťţ]/g, "t")
+    .replace(/[úů]/g, "u")
+    .replace(/[ý]/g, "y")
+    .replace(/[žź]/g, "z")
+    .replace(/\s+a\s+priatelia.*$/, "")
+    .replace(/^\s*\(nom\.?\s*/, "")
+    .replace(/\)\s*$/, "")
+    .replace(/[^a-z]/g, "")
+    .replace(/(ssd|sd)$/, "");
+}
+
+const PARTY_ALIASES: Record<string, string> = {
+  smer: "smer",
+  smerssd: "smer",
+  smersd: "smer",
+  hlas: "hlas",
+  hlasssd: "hlas",
+  hlassd: "hlas",
+  ps: "ps",
+  progresivneslovensko: "ps",
+  sas: "sas",
+  slobodaasolidarita: "sas",
+  kdh: "kdh",
+  krestanskodemokratickehnutie: "kdh",
+  sns: "sns",
+  slovenskanarodnastrana: "sns",
+  rep: "rep",
+  republika: "rep",
+  slov: "slov",
+  slovensko: "slov",
+  olano: "slov",
+  dem: "dem",
+  demokrati: "dem",
+  al: "al",
+  aliancia: "al",
+  szovetseg: "al",
+};
+
+export function resolvePartyId(
+  rawAbbr: string | null,
+  partySlugToId: Record<string, string>
+): string | null {
+  if (!rawAbbr) return null;
+  const key = normalizePartyKey(rawAbbr);
+  if (!key) return null;
+
+  const aliased = PARTY_ALIASES[key];
+  if (aliased && partySlugToId[aliased]) return partySlugToId[aliased];
+
+  if (partySlugToId[key]) return partySlugToId[key];
+
+  for (const k of Object.keys(partySlugToId)) {
+    if (key.startsWith(k) || k.startsWith(key)) return partySlugToId[k];
+  }
+  return null;
 }
 
 // ─── MPs ──────────────────────────────────────────────────
@@ -27,16 +115,20 @@ function chunks<T>(arr: T[], size: number): T[][] {
 export async function upsertMps(
   db: Database,
   items: ScrapedMp[],
-  partySlugToId: Record<string, string>
+  partySlugToId: Record<string, string>,
+  independentIds?: Set<string>
 ): Promise<number> {
   if (!items.length) return 0;
   let count = 0;
 
   for (const batch of chunks(items, CHUNK)) {
     const values = batch.map((mp) => {
-      const partyId = mp.partyAbbr
-        ? (partySlugToId[mp.partyAbbr.toLowerCase()] ?? null)
-        : null;
+      const override = MANUAL_PARTY_OVERRIDES[mp.nrsrPersonId];
+      const partyId = override
+        ? override
+        : independentIds?.has(mp.nrsrPersonId)
+          ? null
+          : resolvePartyId(mp.partyAbbr, partySlugToId);
       return {
         slug: mp.slug,
         nameFull: mp.nameFull,

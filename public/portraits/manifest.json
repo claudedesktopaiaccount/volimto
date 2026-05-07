@@ -1,0 +1,1056 @@
+{
+  "generatedAt": "2026-05-01T12:40:56.417Z",
+  "total": 150,
+  "mps": [
+    {
+      "id": "1180",
+      "rawName": "Bajo Holečková, Martina",
+      "firstLast": "Martina Bajo Holečková",
+      "normalized": "martina bajo holeckova",
+      "file": "mp-1180.jpg"
+    },
+    {
+      "id": "871",
+      "rawName": "Baláž, Vladimír",
+      "firstLast": "Vladimír Baláž",
+      "normalized": "vladimir balaz",
+      "file": "mp-871.jpg"
+    },
+    {
+      "id": "1207",
+      "rawName": "Bartek, Michal",
+      "firstLast": "Michal Bartek",
+      "normalized": "michal bartek",
+      "file": "mp-1207.jpg"
+    },
+    {
+      "id": "233",
+      "rawName": "Baška, Jaroslav",
+      "firstLast": "Jaroslav Baška",
+      "normalized": "jaroslav baska",
+      "file": "mp-233.jpg"
+    },
+    {
+      "id": "1187",
+      "rawName": "Becík, Branislav",
+      "firstLast": "Branislav Becík",
+      "normalized": "branislav becik",
+      "file": "mp-1187.jpg"
+    },
+    {
+      "id": "1119",
+      "rawName": "Bihariová, Irena",
+      "firstLast": "Irena Bihariová",
+      "normalized": "irena bihariova",
+      "file": "mp-1119.jpg"
+    },
+    {
+      "id": "976",
+      "rawName": "Bittó Cigániková, Jana",
+      "firstLast": "Jana Bittó Cigániková",
+      "normalized": "jana bitto ciganikova",
+      "file": "mp-976.jpg"
+    },
+    {
+      "id": "997",
+      "rawName": "Blcháč, Ján",
+      "firstLast": "Ján Blcháč",
+      "normalized": "jan blchac",
+      "file": "mp-997.jpg"
+    },
+    {
+      "id": "1144",
+      "rawName": "Bužo, Lukáš",
+      "firstLast": "Lukáš Bužo",
+      "normalized": "lukas buzo",
+      "file": "mp-1144.jpg"
+    },
+    {
+      "id": "1195",
+      "rawName": "Cech, Jozef",
+      "firstLast": "Jozef Cech",
+      "normalized": "jozef cech",
+      "file": "mp-1195.jpg"
+    },
+    {
+      "id": "1179",
+      "rawName": "Čaučík, Marián",
+      "firstLast": "Marián Čaučík",
+      "normalized": "marian caucik",
+      "file": "mp-1179.jpg"
+    },
+    {
+      "id": "1160",
+      "rawName": "Čavojová, Marcela",
+      "firstLast": "Marcela Čavojová",
+      "normalized": "marcela cavojova",
+      "file": "mp-1160.jpg"
+    },
+    {
+      "id": "1203",
+      "rawName": "Čellár, Miroslav",
+      "firstLast": "Miroslav Čellár",
+      "normalized": "miroslav cellar",
+      "file": "mp-1203.jpg"
+    },
+    {
+      "id": "929",
+      "rawName": "Danko, Andrej",
+      "firstLast": "Andrej Danko",
+      "normalized": "andrej danko",
+      "file": "mp-929.jpg"
+    },
+    {
+      "id": "1140",
+      "rawName": "Dej, Dávid",
+      "firstLast": "Dávid Dej",
+      "normalized": "david dej",
+      "file": "mp-1140.jpg"
+    },
+    {
+      "id": "1216",
+      "rawName": "Demečko, Dávid",
+      "firstLast": "Dávid Demečko",
+      "normalized": "david demecko",
+      "file": "mp-1216.jpg"
+    },
+    {
+      "id": "779",
+      "rawName": "Dostál, Ondrej",
+      "firstLast": "Ondrej Dostál",
+      "normalized": "ondrej dostal",
+      "file": "mp-779.jpg"
+    },
+    {
+      "id": "1133",
+      "rawName": "Dubéci, Martin",
+      "firstLast": "Martin Dubéci",
+      "normalized": "martin dubeci",
+      "file": "mp-1133.jpg"
+    },
+    {
+      "id": "1213",
+      "rawName": "Dubovický, Richard",
+      "firstLast": "Richard Dubovický",
+      "normalized": "richard dubovicky",
+      "file": "mp-1213.jpg"
+    },
+    {
+      "id": "1221",
+      "rawName": "Dušenka, Igor",
+      "firstLast": "Igor Dušenka",
+      "normalized": "igor dusenka",
+      "file": "mp-1221.jpg"
+    },
+    {
+      "id": "1123",
+      "rawName": "Dvořák, Oskar",
+      "firstLast": "Oskar Dvořák",
+      "normalized": "oskar dvorak",
+      "file": "mp-1123.jpg"
+    },
+    {
+      "id": "1172",
+      "rawName": "Eliáš, Richard",
+      "firstLast": "Richard Eliáš",
+      "normalized": "richard elias",
+      "file": "mp-1172.jpg"
+    },
+    {
+      "id": "36",
+      "rawName": "Faič, Vladimír",
+      "firstLast": "Vladimír Faič",
+      "normalized": "vladimir faic",
+      "file": "mp-36.jpg"
+    },
+    {
+      "id": "931",
+      "rawName": "Farkašovský, Karol",
+      "firstLast": "Karol Farkašovský",
+      "normalized": "karol farkasovsky",
+      "file": "mp-931.jpg"
+    },
+    {
+      "id": "1008",
+      "rawName": "Ferenčák, Ján",
+      "firstLast": "Ján Ferenčák",
+      "normalized": "jan ferencak",
+      "file": "mp-1008.jpg"
+    },
+    {
+      "id": "966",
+      "rawName": "Galek, Karol",
+      "firstLast": "Karol Galek",
+      "normalized": "karol galek",
+      "file": "mp-966.jpg"
+    },
+    {
+      "id": "656",
+      "rawName": "Galis, Dušan",
+      "firstLast": "Dušan Galis",
+      "normalized": "dusan galis",
+      "file": "mp-656.jpg"
+    },
+    {
+      "id": "785",
+      "rawName": "Galko, Ľubomír",
+      "firstLast": "Ľubomír Galko",
+      "normalized": "lubomir galko",
+      "file": "mp-785.jpg"
+    },
+    {
+      "id": "1198",
+      "rawName": "Garaj, Milan",
+      "firstLast": "Milan Garaj",
+      "normalized": "milan garaj",
+      "file": "mp-1198.jpg"
+    },
+    {
+      "id": "1154",
+      "rawName": "Gašpar, Tibor",
+      "firstLast": "Tibor Gašpar",
+      "normalized": "tibor gaspar",
+      "file": "mp-1154.jpg"
+    },
+    {
+      "id": "892",
+      "rawName": "Gašparovič, Štefan",
+      "firstLast": "Štefan Gašparovič",
+      "normalized": "stefan gasparovic",
+      "file": "mp-892.jpg"
+    },
+    {
+      "id": "1126",
+      "rawName": "Gažovičová, Tina",
+      "firstLast": "Tina Gažovičová",
+      "normalized": "tina gazovicova",
+      "file": "mp-1126.jpg"
+    },
+    {
+      "id": "1214",
+      "rawName": "Glück, Richard",
+      "firstLast": "Richard Glück",
+      "normalized": "richard gluck",
+      "file": "mp-1214.jpg"
+    },
+    {
+      "id": "738",
+      "rawName": "Goga, Pavol",
+      "firstLast": "Pavol Goga",
+      "normalized": "pavol goga",
+      "file": "mp-738.jpg"
+    },
+    {
+      "id": "1222",
+      "rawName": "Gregorová, Gréta",
+      "firstLast": "Gréta Gregorová",
+      "normalized": "greta gregorova",
+      "file": "mp-1222.jpg"
+    },
+    {
+      "id": "910",
+      "rawName": "Grendel, Gábor",
+      "firstLast": "Gábor Grendel",
+      "normalized": "gabor grendel",
+      "file": "mp-910.jpg"
+    },
+    {
+      "id": "971",
+      "rawName": "Gröhling, Branislav",
+      "firstLast": "Branislav Gröhling",
+      "normalized": "branislav grohling",
+      "file": "mp-971.jpg"
+    },
+    {
+      "id": "1009",
+      "rawName": "Habánik, Jozef",
+      "firstLast": "Jozef Habánik",
+      "normalized": "jozef habanik",
+      "file": "mp-1009.jpg"
+    },
+    {
+      "id": "874",
+      "rawName": "Hambálek, Augustín",
+      "firstLast": "Augustín Hambálek",
+      "normalized": "augustin hambalek",
+      "file": "mp-874.jpg"
+    },
+    {
+      "id": "1129",
+      "rawName": "Hanuliaková, Jana",
+      "firstLast": "Jana Hanuliaková",
+      "normalized": "jana hanuliakova",
+      "file": "mp-1129.jpg"
+    },
+    {
+      "id": "1142",
+      "rawName": "Hargaš, Ján",
+      "firstLast": "Ján Hargaš",
+      "normalized": "jan hargas",
+      "file": "mp-1142.jpg"
+    },
+    {
+      "id": "1192",
+      "rawName": "Hazucha, Ivan",
+      "firstLast": "Ivan Hazucha",
+      "normalized": "ivan hazucha",
+      "file": "mp-1192.jpg"
+    },
+    {
+      "id": "859",
+      "rawName": "Hlina, Alojz",
+      "firstLast": "Alojz Hlina",
+      "normalized": "alojz hlina",
+      "file": "mp-859.jpg"
+    },
+    {
+      "id": "1183",
+      "rawName": "Horecký, Ján",
+      "firstLast": "Ján Horecký",
+      "normalized": "jan horecky",
+      "file": "mp-1183.jpg"
+    },
+    {
+      "id": "1219",
+      "rawName": "Horváth, Ján",
+      "firstLast": "Ján Horváth",
+      "normalized": "jan horvath",
+      "file": "mp-1219.jpg"
+    },
+    {
+      "id": "1202",
+      "rawName": "Hrubý, Ján",
+      "firstLast": "Ján Hrubý",
+      "normalized": "jan hruby",
+      "file": "mp-1202.jpg"
+    },
+    {
+      "id": "1188",
+      "rawName": "Jakab, Július",
+      "firstLast": "Július Jakab",
+      "normalized": "julius jakab",
+      "file": "mp-1188.jpg"
+    },
+    {
+      "id": "1169",
+      "rawName": "Janas, Karol",
+      "firstLast": "Karol Janas",
+      "normalized": "karol janas",
+      "file": "mp-1169.jpg"
+    },
+    {
+      "id": "961",
+      "rawName": "Janckulík, Igor",
+      "firstLast": "Igor Janckulík",
+      "normalized": "igor janckulik",
+      "file": "mp-961.jpg"
+    },
+    {
+      "id": "61",
+      "rawName": "Jarjabek, Dušan",
+      "firstLast": "Dušan Jarjabek",
+      "normalized": "dusan jarjabek",
+      "file": "mp-61.jpg"
+    },
+    {
+      "id": "1121",
+      "rawName": "Jaurová, Zora",
+      "firstLast": "Zora Jaurová",
+      "normalized": "zora jaurova",
+      "file": "mp-1121.jpg"
+    },
+    {
+      "id": "891",
+      "rawName": "Ježík, Jozef",
+      "firstLast": "Jozef Ježík",
+      "normalized": "jozef jezik",
+      "file": "mp-891.jpg"
+    },
+    {
+      "id": "1128",
+      "rawName": "Jurík, Beáta",
+      "firstLast": "Beáta Jurík",
+      "normalized": "beata jurik",
+      "file": "mp-1128.jpg"
+    },
+    {
+      "id": "1218",
+      "rawName": "Kačmár, Jozef",
+      "firstLast": "Jozef Kačmár",
+      "normalized": "jozef kacmar",
+      "file": "mp-1218.jpg"
+    },
+    {
+      "id": "1170",
+      "rawName": "Kalivoda, Peter",
+      "firstLast": "Peter Kalivoda",
+      "normalized": "peter kalivoda",
+      "file": "mp-1170.jpg"
+    },
+    {
+      "id": "1205",
+      "rawName": "Kapuš, Michal",
+      "firstLast": "Michal Kapuš",
+      "normalized": "michal kapus",
+      "file": "mp-1205.jpg"
+    },
+    {
+      "id": "1158",
+      "rawName": "Karas, Daniel",
+      "firstLast": "Daniel Karas",
+      "normalized": "daniel karas",
+      "file": "mp-1158.jpg"
+    },
+    {
+      "id": "873",
+      "rawName": "Kéry, Marián",
+      "firstLast": "Marián Kéry",
+      "normalized": "marian kery",
+      "file": "mp-873.jpg"
+    },
+    {
+      "id": "1125",
+      "rawName": "Kišš, Štefan",
+      "firstLast": "Štefan Kišš",
+      "normalized": "stefan kiss",
+      "file": "mp-1125.jpg"
+    },
+    {
+      "id": "1139",
+      "rawName": "Kleinert, Dana",
+      "firstLast": "Dana Kleinert",
+      "normalized": "dana kleinert",
+      "file": "mp-1139.jpg"
+    },
+    {
+      "id": "1023",
+      "rawName": "Kmec, Peter",
+      "firstLast": "Peter Kmec",
+      "normalized": "peter kmec",
+      "file": "mp-1023.jpg"
+    },
+    {
+      "id": "1224",
+      "rawName": "Kolejáková, Monika",
+      "firstLast": "Monika Kolejáková",
+      "normalized": "monika kolejakova",
+      "file": "mp-1224.jpg"
+    },
+    {
+      "id": "1025",
+      "rawName": "Kolíková, Mária",
+      "firstLast": "Mária Kolíková",
+      "normalized": "maria kolikova",
+      "file": "mp-1025.jpg"
+    },
+    {
+      "id": "1124",
+      "rawName": "Kosová, Ingrid",
+      "firstLast": "Ingrid Kosová",
+      "normalized": "ingrid kosova",
+      "file": "mp-1124.jpg"
+    },
+    {
+      "id": "1151",
+      "rawName": "Kotlár, Peter",
+      "firstLast": "Peter Kotlár",
+      "normalized": "peter kotlar",
+      "file": "mp-1151.jpg"
+    },
+    {
+      "id": "907",
+      "rawName": "Krajčí, Marek",
+      "firstLast": "Marek Krajčí",
+      "normalized": "marek krajci",
+      "file": "mp-907.jpg"
+    },
+    {
+      "id": "1210",
+      "rawName": "Kramplová, Dagmar",
+      "firstLast": "Dagmar Kramplová",
+      "normalized": "dagmar kramplova",
+      "file": "mp-1210.jpg"
+    },
+    {
+      "id": "1190",
+      "rawName": "Krátky, Rastislav",
+      "firstLast": "Rastislav Krátky",
+      "normalized": "rastislav kratky",
+      "file": "mp-1190.jpg"
+    },
+    {
+      "id": "1032",
+      "rawName": "Krúpa, Juraj",
+      "firstLast": "Juraj Krúpa",
+      "normalized": "juraj krupa",
+      "file": "mp-1032.jpg"
+    },
+    {
+      "id": "668",
+      "rawName": "Kubánek, Stanislav",
+      "firstLast": "Stanislav Kubánek",
+      "normalized": "stanislav kubanek",
+      "file": "mp-668.jpg"
+    },
+    {
+      "id": "671",
+      "rawName": "Kvorka, Ján",
+      "firstLast": "Ján Kvorka",
+      "normalized": "jan kvorka",
+      "file": "mp-671.jpg"
+    },
+    {
+      "id": "1189",
+      "rawName": "Lackovič, Marek",
+      "firstLast": "Marek Lackovič",
+      "normalized": "marek lackovic",
+      "file": "mp-1189.jpg"
+    },
+    {
+      "id": "1081",
+      "rawName": "Laššáková, Ľubica",
+      "firstLast": "Ľubica Laššáková",
+      "normalized": "lubica lassakova",
+      "file": "mp-1081.jpg"
+    },
+    {
+      "id": "1037",
+      "rawName": "Ledecký, Vladimír",
+      "firstLast": "Vladimír Ledecký",
+      "normalized": "vladimir ledecky",
+      "file": "mp-1037.jpg"
+    },
+    {
+      "id": "1200",
+      "rawName": "Lešo, Boleslav",
+      "firstLast": "Boleslav Lešo",
+      "normalized": "boleslav leso",
+      "file": "mp-1200.jpg"
+    },
+    {
+      "id": "1199",
+      "rawName": "Lučanský, Adam",
+      "firstLast": "Adam Lučanský",
+      "normalized": "adam lucansky",
+      "file": "mp-1199.jpg"
+    },
+    {
+      "id": "733",
+      "rawName": "Lukša, Michal",
+      "firstLast": "Michal Lukša",
+      "normalized": "michal luksa",
+      "file": "mp-733.jpg"
+    },
+    {
+      "id": "1134",
+      "rawName": "Luščíková, Darina",
+      "firstLast": "Darina Luščíková",
+      "normalized": "darina luscikova",
+      "file": "mp-1134.jpg"
+    },
+    {
+      "id": "1152",
+      "rawName": "Ľupták, Pavel",
+      "firstLast": "Pavel Ľupták",
+      "normalized": "pavel luptak",
+      "file": "mp-1152.jpg"
+    },
+    {
+      "id": "1223",
+      "rawName": "Macášek, Vladimír",
+      "firstLast": "Vladimír Macášek",
+      "normalized": "vladimir macasek",
+      "file": "mp-1223.jpg"
+    },
+    {
+      "id": "1211",
+      "rawName": "Mačicová, Zdenka",
+      "firstLast": "Zdenka Mačicová",
+      "normalized": "zdenka macicova",
+      "file": "mp-1211.jpg"
+    },
+    {
+      "id": "1184",
+      "rawName": "Majerský, František",
+      "firstLast": "František Majerský",
+      "normalized": "frantisek majersky",
+      "file": "mp-1184.jpg"
+    },
+    {
+      "id": "1178",
+      "rawName": "Majerský, Milan",
+      "firstLast": "Milan Majerský",
+      "normalized": "milan majersky",
+      "file": "mp-1178.jpg"
+    },
+    {
+      "id": "1173",
+      "rawName": "Malatinec, Roman",
+      "firstLast": "Roman Malatinec",
+      "normalized": "roman malatinec",
+      "file": "mp-1173.jpg"
+    },
+    {
+      "id": "1042",
+      "rawName": "Marcinková, Vladimíra",
+      "firstLast": "Vladimíra Marcinková",
+      "normalized": "vladimira marcinkova",
+      "file": "mp-1042.jpg"
+    },
+    {
+      "id": "1159",
+      "rawName": "Matejičková, Zuzana",
+      "firstLast": "Zuzana Matejičková",
+      "normalized": "zuzana matejickova",
+      "file": "mp-1159.jpg"
+    },
+    {
+      "id": "808",
+      "rawName": "Matovič, Igor",
+      "firstLast": "Igor Matovič",
+      "normalized": "igor matovic",
+      "file": "mp-808.jpg"
+    },
+    {
+      "id": "1156",
+      "rawName": "Mažgút, Ján",
+      "firstLast": "Ján Mažgút",
+      "normalized": "jan mazgut",
+      "file": "mp-1156.jpg"
+    },
+    {
+      "id": "1204",
+      "rawName": "Mego, Jaroslav",
+      "firstLast": "Jaroslav Mego",
+      "normalized": "jaroslav mego",
+      "file": "mp-1204.jpg"
+    },
+    {
+      "id": "1130",
+      "rawName": "Mesterová, Zuzana",
+      "firstLast": "Zuzana Mesterová",
+      "normalized": "zuzana mesterova",
+      "file": "mp-1130.jpg"
+    },
+    {
+      "id": "1149",
+      "rawName": "Michelko, Roman",
+      "firstLast": "Roman Michelko",
+      "normalized": "roman michelko",
+      "file": "mp-1149.jpg"
+    },
+    {
+      "id": "92",
+      "rawName": "Mikloško, František",
+      "firstLast": "František Mikloško",
+      "normalized": "frantisek miklosko",
+      "file": "mp-92.jpg"
+    },
+    {
+      "id": "1046",
+      "rawName": "Mikulec, Roman",
+      "firstLast": "Roman Mikulec",
+      "normalized": "roman mikulec",
+      "file": "mp-1046.jpg"
+    },
+    {
+      "id": "322",
+      "rawName": "Muňko, Dušan",
+      "firstLast": "Dušan Muňko",
+      "normalized": "dusan munko",
+      "file": "mp-322.jpg"
+    },
+    {
+      "id": "899",
+      "rawName": "Náhlik, Peter",
+      "firstLast": "Peter Náhlik",
+      "normalized": "peter nahlik",
+      "file": "mp-899.jpg"
+    },
+    {
+      "id": "1212",
+      "rawName": "Nash, Natália",
+      "firstLast": "Natália Nash",
+      "normalized": "natalia nash",
+      "file": "mp-1212.jpg"
+    },
+    {
+      "id": "1196",
+      "rawName": "Nováková, Alena",
+      "firstLast": "Alena Nováková",
+      "normalized": "alena novakova",
+      "file": "mp-1196.jpg"
+    },
+    {
+      "id": "1225",
+      "rawName": "Paľa, Gabriel",
+      "firstLast": "Gabriel Paľa",
+      "normalized": "gabriel pala",
+      "file": "mp-1225.jpg"
+    },
+    {
+      "id": "962",
+      "rawName": "Petrík, Simona",
+      "firstLast": "Simona Petrík",
+      "normalized": "simona petrik",
+      "file": "mp-962.jpg"
+    },
+    {
+      "id": "900",
+      "rawName": "Petro, František",
+      "firstLast": "František Petro",
+      "normalized": "frantisek petro",
+      "file": "mp-900.jpg"
+    },
+    {
+      "id": "1116",
+      "rawName": "Plaváková, Lucia",
+      "firstLast": "Lucia Plaváková",
+      "normalized": "lucia plavakova",
+      "file": "mp-1116.jpg"
+    },
+    {
+      "id": "1194",
+      "rawName": "Plevíková, Zuzana",
+      "firstLast": "Zuzana Plevíková",
+      "normalized": "zuzana plevikova",
+      "file": "mp-1194.jpg"
+    },
+    {
+      "id": "685",
+      "rawName": "Podmanický, Ján",
+      "firstLast": "Ján Podmanický",
+      "normalized": "jan podmanicky",
+      "file": "mp-685.jpg"
+    },
+    {
+      "id": "1088",
+      "rawName": "Pollák, Peter",
+      "firstLast": "Peter Pollák",
+      "normalized": "peter pollak",
+      "file": "mp-1088.jpg"
+    },
+    {
+      "id": "1054",
+      "rawName": "Pročko, Jozef",
+      "firstLast": "Jozef Pročko",
+      "normalized": "jozef procko",
+      "file": "mp-1054.jpg"
+    },
+    {
+      "id": "1131",
+      "rawName": "Prostredník, Ondrej",
+      "firstLast": "Ondrej Prostredník",
+      "normalized": "ondrej prostrednik",
+      "file": "mp-1131.jpg"
+    },
+    {
+      "id": "879",
+      "rawName": "Puci, Róbert",
+      "firstLast": "Róbert Puci",
+      "normalized": "robert puci",
+      "file": "mp-879.jpg"
+    },
+    {
+      "id": "1208",
+      "rawName": "Puškárová, Paula",
+      "firstLast": "Paula Puškárová",
+      "normalized": "paula puskarova",
+      "file": "mp-1208.jpg"
+    },
+    {
+      "id": "1220",
+      "rawName": "Radačovský, Miroslav",
+      "firstLast": "Miroslav Radačovský",
+      "normalized": "miroslav radacovsky",
+      "file": "mp-1220.jpg"
+    },
+    {
+      "id": "761",
+      "rawName": "Raši, Richard",
+      "firstLast": "Richard Raši",
+      "normalized": "richard rasi",
+      "file": "mp-761.jpg"
+    },
+    {
+      "id": "905",
+      "rawName": "Remišová, Veronika",
+      "firstLast": "Veronika Remišová",
+      "normalized": "veronika remisova",
+      "file": "mp-905.jpg"
+    },
+    {
+      "id": "689",
+      "rawName": "Richter, Ján",
+      "firstLast": "Ján Richter",
+      "normalized": "jan richter",
+      "file": "mp-689.jpg"
+    },
+    {
+      "id": "1120",
+      "rawName": "Sabo, Michal",
+      "firstLast": "Michal Sabo",
+      "normalized": "michal sabo",
+      "file": "mp-1120.jpg"
+    },
+    {
+      "id": "762",
+      "rawName": "Saloň, Marián",
+      "firstLast": "Marián Saloň",
+      "normalized": "marian salon",
+      "file": "mp-762.jpg"
+    },
+    {
+      "id": "1163",
+      "rawName": "Sedlák, Justín",
+      "firstLast": "Justín Sedlák",
+      "normalized": "justin sedlak",
+      "file": "mp-1163.jpg"
+    },
+    {
+      "id": "1191",
+      "rawName": "Sitkár, Andrej",
+      "firstLast": "Andrej Sitkár",
+      "normalized": "andrej sitkar",
+      "file": "mp-1191.jpg"
+    },
+    {
+      "id": "1206",
+      "rawName": "Sokol, Peter",
+      "firstLast": "Peter Sokol",
+      "normalized": "peter sokol",
+      "file": "mp-1206.jpg"
+    },
+    {
+      "id": "1117",
+      "rawName": "Spišiak, Jaroslav",
+      "firstLast": "Jaroslav Spišiak",
+      "normalized": "jaroslav spisiak",
+      "file": "mp-1117.jpg"
+    },
+    {
+      "id": "1182",
+      "rawName": "Stachura, Peter",
+      "firstLast": "Peter Stachura",
+      "normalized": "peter stachura",
+      "file": "mp-1182.jpg"
+    },
+    {
+      "id": "1118",
+      "rawName": "Stohlová, Tamara",
+      "firstLast": "Tamara Stohlová",
+      "normalized": "tamara stohlova",
+      "file": "mp-1118.jpg"
+    },
+    {
+      "id": "1058",
+      "rawName": "Stredák, Anton",
+      "firstLast": "Anton Stredák",
+      "normalized": "anton stredak",
+      "file": "mp-1058.jpg"
+    },
+    {
+      "id": "1161",
+      "rawName": "Stuška, Michal",
+      "firstLast": "Michal Stuška",
+      "normalized": "michal stuska",
+      "file": "mp-1161.jpg"
+    },
+    {
+      "id": "1087",
+      "rawName": "Svoboda, Zdenko",
+      "firstLast": "Zdenko Svoboda",
+      "normalized": "zdenko svoboda",
+      "file": "mp-1087.jpg"
+    },
+    {
+      "id": "1217",
+      "rawName": "Szabóová, Andrea",
+      "firstLast": "Andrea Szabóová",
+      "normalized": "andrea szaboova",
+      "file": "mp-1217.jpg"
+    },
+    {
+      "id": "1147",
+      "rawName": "Szalay, Tomáš",
+      "firstLast": "Tomáš Szalay",
+      "normalized": "tomas szalay",
+      "file": "mp-1147.jpg"
+    },
+    {
+      "id": "1150",
+      "rawName": "Ševčík, Ivan",
+      "firstLast": "Ivan Ševčík",
+      "normalized": "ivan sevcik",
+      "file": "mp-1150.jpg"
+    },
+    {
+      "id": "1114",
+      "rawName": "Šimečka, Michal",
+      "firstLast": "Michal Šimečka",
+      "normalized": "michal simecka",
+      "file": "mp-1114.jpg"
+    },
+    {
+      "id": "1177",
+      "rawName": "Šimko, Igor",
+      "firstLast": "Igor Šimko",
+      "normalized": "igor simko",
+      "file": "mp-1177.jpg"
+    },
+    {
+      "id": "1065",
+      "rawName": "Šipoš, Michal",
+      "firstLast": "Michal Šipoš",
+      "normalized": "michal sipos",
+      "file": "mp-1065.jpg"
+    },
+    {
+      "id": "1146",
+      "rawName": "Škopová, Anežka",
+      "firstLast": "Anežka Škopová",
+      "normalized": "anezka skopova",
+      "file": "mp-1146.jpg"
+    },
+    {
+      "id": "862",
+      "rawName": "Škripek, Branislav",
+      "firstLast": "Branislav Škripek",
+      "normalized": "branislav skripek",
+      "file": "mp-862.jpg"
+    },
+    {
+      "id": "1143",
+      "rawName": "Šrobová, Veronika",
+      "firstLast": "Veronika Šrobová",
+      "normalized": "veronika srobova",
+      "file": "mp-1143.jpg"
+    },
+    {
+      "id": "1127",
+      "rawName": "Štefunko, Ivan",
+      "firstLast": "Ivan Štefunko",
+      "normalized": "ivan stefunko",
+      "file": "mp-1127.jpg"
+    },
+    {
+      "id": "1132",
+      "rawName": "Števulová, Zuzana",
+      "firstLast": "Zuzana Števulová",
+      "normalized": "zuzana stevulova",
+      "file": "mp-1132.jpg"
+    },
+    {
+      "id": "769",
+      "rawName": "Šuca, Peter",
+      "firstLast": "Peter Šuca",
+      "normalized": "peter suca",
+      "file": "mp-769.jpg"
+    },
+    {
+      "id": "1145",
+      "rawName": "Tankó, Viliam",
+      "firstLast": "Viliam Tankó",
+      "normalized": "viliam tanko",
+      "file": "mp-1145.jpg"
+    },
+    {
+      "id": "930",
+      "rawName": "Tittel, Dušan",
+      "firstLast": "Dušan Tittel",
+      "normalized": "dusan tittel",
+      "file": "mp-930.jpg"
+    },
+    {
+      "id": "1115",
+      "rawName": "Truban, Michal",
+      "firstLast": "Michal Truban",
+      "normalized": "michal truban",
+      "file": "mp-1115.jpg"
+    },
+    {
+      "id": "1186",
+      "rawName": "Turčanová, Andrea",
+      "firstLast": "Andrea Turčanová",
+      "normalized": "andrea turcanova",
+      "file": "mp-1186.jpg"
+    },
+    {
+      "id": "1075",
+      "rawName": "Valášek, Tomáš",
+      "firstLast": "Tomáš Valášek",
+      "normalized": "tomas valasek",
+      "file": "mp-1075.jpg"
+    },
+    {
+      "id": "1193",
+      "rawName": "Válek, Igor",
+      "firstLast": "Igor Válek",
+      "normalized": "igor valek",
+      "file": "mp-1193.jpg"
+    },
+    {
+      "id": "705",
+      "rawName": "Valocký, Jozef",
+      "firstLast": "Jozef Valocký",
+      "normalized": "jozef valocky",
+      "file": "mp-705.jpg"
+    },
+    {
+      "id": "1135",
+      "rawName": "Vančo, Branislav",
+      "firstLast": "Branislav Vančo",
+      "normalized": "branislav vanco",
+      "file": "mp-1135.jpg"
+    },
+    {
+      "id": "861",
+      "rawName": "Vašečka, Richard",
+      "firstLast": "Richard Vašečka",
+      "normalized": "richard vasecka",
+      "file": "mp-861.jpg"
+    },
+    {
+      "id": "293",
+      "rawName": "Vážny, Ľubomír",
+      "firstLast": "Ľubomír Vážny",
+      "normalized": "lubomir vazny",
+      "file": "mp-293.jpg"
+    },
+    {
+      "id": "1141",
+      "rawName": "Veslárová, Veronika",
+      "firstLast": "Veronika Veslárová",
+      "normalized": "veronika veslarova",
+      "file": "mp-1141.jpg"
+    },
+    {
+      "id": "991",
+      "rawName": "Viskupič, Marián",
+      "firstLast": "Marián Viskupič",
+      "normalized": "marian viskupic",
+      "file": "mp-991.jpg"
+    },
+    {
+      "id": "1176",
+      "rawName": "Vlček, Erik",
+      "firstLast": "Erik Vlček",
+      "normalized": "erik vlcek",
+      "file": "mp-1176.jpg"
+    },
+    {
+      "id": "1019",
+      "rawName": "Zahorčák, Viliam",
+      "firstLast": "Viliam Zahorčák",
+      "normalized": "viliam zahorcak",
+      "file": "mp-1019.jpg"
+    },
+    {
+      "id": "691",
+      "rawName": "Žiga, Peter",
+      "firstLast": "Peter Žiga",
+      "normalized": "peter ziga",
+      "file": "mp-691.jpg"
+    }
+  ]
+}

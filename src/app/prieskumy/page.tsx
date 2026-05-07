@@ -15,6 +15,18 @@ export const metadata: Metadata = {
 
 export const revalidate = 21600;
 
+function formatSlovakDate(isoDate?: string): string {
+  if (!isoDate) return "N/A";
+
+  const months = [
+    "januára", "februára", "marca", "apríla", "mája", "júna",
+    "júla", "augusta", "septembra", "októbra", "novembra", "decembra",
+  ];
+  const [year, month, day] = isoDate.split("-").map(Number);
+  if (!year || !month || !day || !months[month - 1]) return isoDate;
+  return `${day}. ${months[month - 1]} ${year}`;
+}
+
 export default async function PrieskumyPage() {
   const polls = await getAllPolls();
 
@@ -48,6 +60,9 @@ export default async function PrieskumyPage() {
   // Latest poll data for bar chart
   const latest = polls[0];
   const previous = polls.length > 1 ? polls[1] : null;
+  const latestLabel = latest
+    ? `${latest.agency}, ${formatSlovakDate(latest.publishedDate)}`
+    : "N/A";
 
   const partyBars = PARTY_LIST
     .map((party) => ({
@@ -73,7 +88,7 @@ export default async function PrieskumyPage() {
       <div className="max-w-content mx-auto px-6 pt-8">
         <SectionHeading
           title="Prieskumy verejnej mienky"
-          subtitle={`${polls.length} prieskumov zo Wikipedie — posledný: ${latest?.agency ?? "N/A"}, ${latest?.publishedDate ?? ""}`}
+          subtitle={`${polls.length} prieskumov z Wikipédie — posledný dostupný prieskum: ${latestLabel}`}
         />
       </div>
 

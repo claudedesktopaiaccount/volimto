@@ -10,7 +10,13 @@ import ThemeProvider from "@/components/ThemeProvider";
 import { AuthProvider } from "@/components/AuthProvider";
 import { ViewTransition } from "react";
 import PageNumber from "@/components/PageNumber";
-import { SITE_URL, SITE_NAME, SITE_DESCRIPTION, SITE_LOCALE } from "@/lib/site-config";
+import {
+  SITE_URL,
+  SITE_NAME,
+  SITE_DESCRIPTION,
+  SITE_LOCALE,
+  ELECTION_DATE_ESTIMATE,
+} from "@/lib/site-config";
 
 const dmSans = DM_Sans({
   variable: "--font-dm-sans",
@@ -49,6 +55,10 @@ export const metadata: Metadata = {
 
 const SW_REGISTRATION_SCRIPT = `if('serviceWorker'in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js').catch(function(){});})}`;
 
+function getInitialDaysUntilElection(): number {
+  return Math.ceil((ELECTION_DATE_ESTIMATE.getTime() - Date.now()) / 86_400_000);
+}
+
 export default async function RootLayout({
   children,
 }: Readonly<{
@@ -56,6 +66,7 @@ export default async function RootLayout({
 }>) {
   const cookieStore = await cookies();
   const theme = (cookieStore.get("theme")?.value as "light" | "dark") || "light";
+  const initialDaysUntilElection = getInitialDaysUntilElection();
 
   return (
     <html
@@ -102,7 +113,7 @@ export default async function RootLayout({
             <a href="#main-content" className="skip-link">
               Preskočiť na obsah
             </a>
-            <Navbar />
+            <Navbar initialDays={initialDaysUntilElection} />
             <main id="main-content" className="pb-16 lg:pb-0" style={{ viewTransitionName: "page-content" }}>
               <ViewTransition>{children}</ViewTransition>
             </main>

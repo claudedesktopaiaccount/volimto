@@ -5,9 +5,10 @@ import { useState } from "react";
 interface Props {
   source?: string;
   compact?: boolean;
+  inverted?: boolean;
 }
 
-export default function NewsletterSignup({ source = "web", compact = false }: Props) {
+export default function NewsletterSignup({ source = "web", compact = false, inverted = false }: Props) {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error" | "duplicate">("idle");
 
@@ -47,12 +48,12 @@ export default function NewsletterSignup({ source = "web", compact = false }: Pr
         placeholder="váš@email.sk"
         required
         disabled={status === "loading"}
-        className={`flex-1 border border-divider bg-surface px-3 py-2 text-sm text-text placeholder-muted focus:outline-none focus:border-ink ${compact ? "" : "rounded-none"}`}
+        className={`flex-1 px-3 py-2 text-sm focus:outline-none ${inverted ? "border border-white/20 bg-white/10 text-white placeholder-white/40 focus:border-white/60" : "border border-divider bg-surface text-text placeholder-muted focus:border-ink"} ${compact ? "" : "rounded-none"}`}
       />
       <button
         type="submit"
         disabled={status === "loading" || !email}
-        className="bg-ink text-surface px-4 py-2 text-sm font-semibold hover:opacity-80 transition-opacity disabled:opacity-50 whitespace-nowrap"
+        className={`px-4 py-2 text-sm font-semibold transition-opacity disabled:opacity-50 whitespace-nowrap hover:opacity-80 ${inverted ? "bg-white text-black" : "bg-ink text-surface"}`}
       >
         {status === "loading" ? "..." : "Odoberať"}
       </button>

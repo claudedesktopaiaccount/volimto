@@ -11,7 +11,6 @@ export default function HomepageHook({ topParties }: HomepageHookProps) {
     <div>
       {/* Hero CTA */}
       <section className="py-16 sm:py-24 text-center max-w-xl mx-auto px-4">
-        <p className="micro-label mb-3">Slovenské voľby 2026</p>
         <h1 className="font-serif text-3xl sm:text-4xl font-bold tracking-tight leading-tight mb-3">
           Kde stojíš v&nbsp;slovenskej politike?
         </h1>
@@ -20,10 +19,12 @@ export default function HomepageHook({ topParties }: HomepageHookProps) {
         </p>
         <Link
           href="/volebny-kalkulator"
-          className="inline-block bg-ink text-paper px-8 py-3 font-semibold text-sm hover:bg-text transition-colors"
+          style={{ background: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }}
+          className="inline-block px-8 py-3 font-semibold text-sm hover:opacity-90 transition-opacity"
         >
           Spustiť kalkulačku →
         </Link>
+        <p className="micro-label mt-16">Slovenské voľby 2026</p>
       </section>
 
       {/* Teaser poll strip */}

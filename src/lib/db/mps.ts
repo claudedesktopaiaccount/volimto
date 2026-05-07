@@ -24,6 +24,7 @@ export interface MpRow {
   partyColor: string | null;
   constituency: string | null;
   role: string;
+  photoUrl: string | null;
 }
 
 export interface MpDetail {
@@ -119,6 +120,7 @@ export async function getMps(
       partyColor: parties.color,
       constituency: mps.constituency,
       role: mps.role,
+      photoUrl: mps.photoUrl,
     })
     .from(mps)
     .leftJoin(parties, eq(mps.partyId, parties.id))

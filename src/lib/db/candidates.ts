@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import type { DrizzleD1Database } from "drizzle-orm/d1";
 import { candidates, parties } from "./schema";
 
@@ -26,9 +26,9 @@ export async function getCandidates(
       listRank: candidates.listRank,
       role: candidates.role,
       portraitUrl: candidates.portraitUrl,
-      partyColor: parties.color,
-      partyAbbreviation: parties.abbreviation,
-      partyName: parties.name,
+      partyColor: sql<string>`${parties.color}`.as("party_color"),
+      partyAbbreviation: sql<string>`${parties.abbreviation}`.as("party_abbreviation"),
+      partyName: sql<string>`${parties.name}`.as("party_name"),
     })
     .from(candidates)
     .innerJoin(parties, eq(candidates.partyId, parties.id))

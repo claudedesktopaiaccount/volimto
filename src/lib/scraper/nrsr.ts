@@ -123,6 +123,29 @@ export function mapChoice(raw: string): string {
   }
 }
 
+// ─── scrapeIndependentMps ─────────────────────────────────
+
+export async function scrapeIndependentMps(
+  fetcher: Fetcher = defaultFetcher
+): Promise<Set<string>> {
+  const url = `${BASE_URL}/web/Default.aspx?sid=poslanci/kluby/nezavisli`;
+  try {
+    const html = await fetcher(url);
+    return parseIndependentIds(html);
+  } catch (err) {
+    console.error("[nrsr] scrapeIndependentMps error:", err);
+    return new Set();
+  }
+}
+
+export function parseIndependentIds(html: string): Set<string> {
+  const ids = new Set<string>();
+  const re = /PoslanecID=(\d+)/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(html)) !== null) ids.add(m[1]);
+  return ids;
+}
+
 // ─── scrapeM ps ──────────────────────────────────────────
 
 /**

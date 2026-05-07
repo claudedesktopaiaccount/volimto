@@ -4,6 +4,7 @@ import { crowdAggregates, predictionScores, users } from "@/lib/db/schema";
 import { createSentryWithoutRequest, captureException } from "@/lib/sentry";
 import { eq, desc } from "drizzle-orm";
 import TipovanieClient from "./TipovanieClient";
+import PageHeader from "@/components/ui/PageHeader";
 
 export const metadata: Metadata = {
   title: "Tipovanie",
@@ -65,12 +66,10 @@ export default async function TipovaniePage() {
 
   return (
     <div className="max-w-content mx-auto px-6 py-8">
-      <div className="mb-6">
-        <h1 className="text-[28px] font-extrabold text-ink">Tipovanie</h1>
-        <p className="text-[11px] text-muted uppercase tracking-[0.1em] mt-1">
-          TIPNITE SI, KTO VYHRÁ VOĽBY — POROVNAJTE SVOJ TIP S HLASOM ĽUDU
-        </p>
-      </div>
+      <PageHeader
+        title="Tipovanie"
+        eyebrow="TIPNITE SI, KTO VYHRÁ VOĽBY — POROVNAJTE SVOJ TIP S HLASOM ĽUDU"
+      />
 
       <TipovanieClient
         initialCrowd={initialCrowd}

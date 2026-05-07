@@ -6,6 +6,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useTheme } from "@/components/ThemeProvider";
 import { useAuth } from "@/components/AuthProvider";
 import { ELECTION_DATE_ESTIMATE } from "@/lib/site-config";
+import { cn } from "@/lib/utils";
 
 type NavLink = { href: string; label: string };
 
@@ -15,9 +16,6 @@ const PRIMARY_LINKS: NavLink[] = [
   { href: "/poslanci", label: "Poslanci" },
   { href: "/koalicny-simulator", label: "Koaličný simulátor" },
   { href: "/tipovanie", label: "Tipovanie" },
-];
-
-const OVERFLOW_LINKS: NavLink[] = [
   { href: "/povolebne-plany", label: "Povolebné plány" },
   { href: "/volebny-kalkulator", label: "Koho voliť?" },
 ];
@@ -25,11 +23,28 @@ const OVERFLOW_LINKS: NavLink[] = [
 const ALL_LINKS: NavLink[] = [
   { href: "/", label: "Domov" },
   ...PRIMARY_LINKS,
-  ...OVERFLOW_LINKS,
 ];
+
+function readScoreCookie(): { total: number; rank: number } | null {
+  if (typeof document === "undefined") return null;
+  const raw = document.cookie.split("; ").find((c) => c.startsWith("volimto_score="));
+  if (!raw) return null;
+
+  try {
+    return JSON.parse(decodeURIComponent(raw.split("=")[1])) as { total: number; rank: number };
+  } catch {
+    return null;
+  }
+}
 
 function daysUntilElection(): number {
   return Math.ceil((ELECTION_DATE_ESTIMATE.getTime() - Date.now()) / 86_400_000);
+}
+
+function msUntilNextDay(): number {
+  const nextMidnight = new Date();
+  nextMidnight.setHours(24, 0, 0, 0);
+  return Math.max(nextMidnight.getTime() - Date.now(), 1_000);
 }
 
 function SunIcon({ className = "w-5 h-5" }: { className?: string }) {
@@ -48,36 +63,37 @@ function MoonIcon({ className = "w-5 h-5" }: { className?: string }) {
   );
 }
 
-export default function Navbar() {
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [overflowOpen, setOverflowOpen] = useState(false);
-  const [score, setScore] = useState<{ total: number; rank: number } | null>(null);
+function UserIcon({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 7.5a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.5 20.25a7.5 7.5 0 0 1 15 0" />
+    </svg>
+  );
+}
 
-  const overflowRef = useRef<HTMLDivElement>(null);
+export default function Navbar({ initialDays }: { initialDays: number }) {
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [score] = useState<{ total: number; rank: number } | null>(() => readScoreCookie());
+  const [days, setDays] = useState(initialDays);
+
+  const userMenuRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
   const { user, isLoading, logout } = useAuth();
 
   useEffect(() => {
-    const raw = document.cookie.split("; ").find((c) => c.startsWith("volimto_score="));
-    if (!raw) return;
-    try {
-      setScore(JSON.parse(decodeURIComponent(raw.split("=")[1])));
-    } catch {
-      // invalid cookie — leave null
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!overflowOpen) return;
+    if (!userMenuOpen) return;
     function onMouseDown(e: MouseEvent) {
-      if (overflowRef.current && !overflowRef.current.contains(e.target as Node)) {
-        setOverflowOpen(false);
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
       }
     }
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOverflowOpen(false);
+      if (e.key === "Escape") {
+        setUserMenuOpen(false);
+      }
     }
     document.addEventListener("mousedown", onMouseDown);
     document.addEventListener("keydown", onKey);
@@ -85,30 +101,57 @@ export default function Navbar() {
       document.removeEventListener("mousedown", onMouseDown);
       document.removeEventListener("keydown", onKey);
     };
-  }, [overflowOpen]);
+  }, [userMenuOpen]);
 
   useEffect(() => {
-    setDrawerOpen(false);
-    setOverflowOpen(false);
+    const timeout = window.setTimeout(() => {
+      setDrawerOpen(false);
+      setUserMenuOpen(false);
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
   }, [pathname]);
+
+  useEffect(() => {
+    let interval: number | null = null;
+    const syncTimeout = window.setTimeout(() => {
+      setDays(daysUntilElection());
+    }, 0);
+    const timeout = window.setTimeout(() => {
+      setDays(daysUntilElection());
+      interval = window.setInterval(() => {
+        setDays(daysUntilElection());
+      }, 86_400_000);
+    }, msUntilNextDay());
+
+    return () => {
+      window.clearTimeout(syncTimeout);
+      window.clearTimeout(timeout);
+      if (interval !== null) {
+        window.clearInterval(interval);
+      }
+    };
+  }, []);
 
   async function handleLogout() {
     await logout();
-    setOverflowOpen(false);
+    setUserMenuOpen(false);
     setDrawerOpen(false);
     router.push("/");
   }
 
-  const days = daysUntilElection();
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/");
 
   return (
     <header
+      data-navbar-light
       className="sticky top-0 z-50 bg-surface border-b-3 border-ink"
       style={{ viewTransitionName: "navbar" }}
     >
-      <div className="max-w-content mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-4 h-[52px]">
+      <div className="mx-auto flex h-nav items-center gap-4 px-4 sm:px-6 lg:px-8">
         {/* Logo + countdown */}
         <div className="flex items-center gap-3 shrink-0">
           <Link
@@ -123,10 +166,10 @@ export default function Navbar() {
             <div
               suppressHydrationWarning
               aria-label={`~${days} dní do volieb`}
-              className="hidden sm:flex flex-col items-center justify-center bg-ink text-surface w-[52px] h-[36px] pointer-events-none"
+              className="hidden size-nav-count pointer-events-none flex-col items-center justify-center bg-ink text-surface sm:flex"
             >
-              <span className="text-[14px] font-bold leading-none">~{days}</span>
-              <span className="text-[7px] font-medium tracking-[0.12em] uppercase opacity-60 mt-[2px]">DNÍ</span>
+              <span className="text-sm font-bold leading-none">~{days}</span>
+              <span className="mt-0.5 text-micro font-medium uppercase tracking-wide opacity-60">DNÍ</span>
             </div>
           )}
         </div>
@@ -138,11 +181,12 @@ export default function Navbar() {
               key={item.href}
               href={item.href}
               aria-current={isActive(item.href) ? "page" : undefined}
-              className={`px-3 py-2 text-[13px] font-medium whitespace-nowrap transition-colors ${
+              className={cn(
+                "whitespace-nowrap px-3 py-2 text-body-sm font-medium transition-colors",
                 isActive(item.href)
-                  ? "text-ink font-semibold"
-                  : "text-text hover:text-ink hover:bg-hover"
-              }`}
+                  ? "font-semibold text-ink"
+                  : "text-text hover:bg-hover hover:text-ink"
+              )}
             >
               {item.label}
             </Link>
@@ -161,86 +205,74 @@ export default function Navbar() {
             {theme === "light" ? <MoonIcon /> : <SunIcon />}
           </button>
 
-          {/* Auth — desktop */}
+          {/* Auth — desktop (icon + popover) */}
           {!isLoading && (
-            <div className="hidden lg:flex items-center">
-              {user ? (
-                <Link
-                  href="/profil"
-                  className="flex items-center gap-2 px-3 py-2 text-[13px] font-medium text-text hover:text-ink hover:bg-hover transition-colors"
+            <div ref={userMenuRef} className="relative hidden lg:block">
+              <button
+                type="button"
+                onClick={() => setUserMenuOpen((v) => !v)}
+                aria-haspopup="menu"
+                aria-expanded={userMenuOpen}
+                aria-label={user ? user.displayName : "Prihlásiť sa"}
+                className="p-2 text-ink hover:bg-hover transition-colors"
+              >
+                <UserIcon />
+              </button>
+
+              {userMenuOpen && (
+                <div
+                  role="menu"
+                  className="absolute right-0 top-full mt-1 w-56 bg-card border border-divider z-50"
                 >
-                  <span>{user.displayName}</span>
-                  {score && (
-                    <span className="text-[11px] font-mono opacity-60">
-                      {score.total}b · #{score.rank}
-                    </span>
+                  {user ? (
+                    <>
+                      <Link
+                        href="/profil"
+                        role="menuitem"
+                        onClick={() => setUserMenuOpen(false)}
+                        className="flex items-center justify-between px-3 py-2 text-sm font-medium text-text hover:text-ink hover:bg-hover transition-colors"
+                      >
+                        <span>{user.displayName}</span>
+                        {score && (
+                          <span className="text-caption font-mono opacity-60">
+                            {score.total}b · #{score.rank}
+                          </span>
+                        )}
+                      </Link>
+                      <div className="border-t border-divider" />
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={handleLogout}
+                        className="block w-full text-left px-3 py-2 text-sm font-medium text-text hover:text-ink hover:bg-hover transition-colors"
+                      >
+                        Odhlásiť sa
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <Link
+                        href="/prihlasenie"
+                        role="menuitem"
+                        onClick={() => setUserMenuOpen(false)}
+                        className="block px-3 py-2 text-sm font-medium text-text hover:text-ink hover:bg-hover transition-colors"
+                      >
+                        Prihlásiť sa
+                      </Link>
+                      <Link
+                        href="/registracia"
+                        role="menuitem"
+                        onClick={() => setUserMenuOpen(false)}
+                        className="block px-3 py-2 text-sm font-medium text-text hover:text-ink hover:bg-hover transition-colors"
+                      >
+                        Registrovať sa
+                      </Link>
+                    </>
                   )}
-                </Link>
-              ) : (
-                <Link
-                  href="/prihlasenie"
-                  className="px-3 py-2 text-[13px] font-medium text-text hover:text-ink hover:bg-hover transition-colors"
-                >
-                  Prihlásiť sa
-                </Link>
+                </div>
               )}
             </div>
           )}
-
-          {/* Overflow menu (Povolebné plány, Koho voliť?, logout) — desktop */}
-          <div ref={overflowRef} className="relative hidden lg:block">
-            <button
-              type="button"
-              onClick={() => setOverflowOpen((v) => !v)}
-              aria-haspopup="menu"
-              aria-expanded={overflowOpen}
-              aria-label="Ďalšie možnosti"
-              className="p-2 text-ink hover:bg-hover transition-colors"
-            >
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                <circle cx="4" cy="10" r="1.5" />
-                <circle cx="10" cy="10" r="1.5" />
-                <circle cx="16" cy="10" r="1.5" />
-              </svg>
-            </button>
-
-            {overflowOpen && (
-              <div
-                role="menu"
-                className="absolute right-0 top-full mt-1 w-56 bg-card border border-divider z-50"
-              >
-                {OVERFLOW_LINKS.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    role="menuitem"
-                    onClick={() => setOverflowOpen(false)}
-                    aria-current={isActive(item.href) ? "page" : undefined}
-                    className={`block px-3 py-2 text-sm font-medium transition-colors ${
-                      isActive(item.href)
-                        ? "text-ink font-semibold bg-hover"
-                        : "text-text hover:text-ink hover:bg-hover"
-                    }`}
-                  >
-                    {item.label}
-                  </Link>
-                ))}
-                {user && (
-                  <>
-                    <div className="border-t border-divider" />
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={handleLogout}
-                      className="block w-full text-left px-3 py-2 text-sm font-medium text-text hover:text-ink hover:bg-hover transition-colors"
-                    >
-                      Odhlásiť sa
-                    </button>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
 
           {/* Mobile hamburger */}
           <button
@@ -291,7 +323,7 @@ export default function Navbar() {
                   >
                     <span>{user.displayName}</span>
                     {score && (
-                      <span className="text-[12px] font-mono opacity-60">
+                      <span className="text-xs font-mono opacity-60">
                         {score.total}b · #{score.rank}
                       </span>
                     )}

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getLatestPolls } from "@/lib/poll-data";
 import { getDb } from "@/lib/db";
 import { PredikciaMini, SimulatorMini, PrieskumyMini } from "@/components/home/FeaturePreviews";
+import { buttonClasses } from "@/components/ui/Button";
 
 export const revalidate = 3600;
 
@@ -39,23 +40,20 @@ export default async function Home() {
   return (
     <main>
       {/* Hero */}
-      <section className="border-b border-border text-center bg-subtle px-6 pt-16 pb-14">
+      <section className="border-b border-border bg-subtle px-6 pb-12 pt-12 text-center md:pb-14">
         <div className="max-w-content mx-auto">
-          <p className="text-[11px] text-muted tracking-[0.12em] font-semibold uppercase mb-4">
+          <p className="mb-4 text-label text-muted">
             SLOVENSKÉ VOĽBY 2026
           </p>
-          <h1
-            className="text-[42px] font-extrabold text-ink mb-4 leading-[1.15] [text-wrap:balance]"
-            style={{ letterSpacing: "-1px" }}
-          >
+          <h1 className="mb-4 text-5xl font-extrabold leading-tight text-ink [text-wrap:balance] md:text-6xl lg:text-7xl">
             Kde stojíš v slovenskej politike?
           </h1>
-          <p className="text-[16px] text-secondary mb-8 leading-[1.6] max-w-lg mx-auto">
+          <p className="mx-auto mb-5 max-w-xl text-base leading-relaxed text-secondary md:mb-6 md:text-lg">
             20 otázok. 2 minúty. Zisti, ktoré strany zastupujú tvoje hodnoty.
           </p>
           <Link
             href="/volebny-kalkulator"
-            className="inline-block bg-ink text-white text-[15px] font-semibold px-7 py-3.5 hover:opacity-90 transition-opacity"
+            className={buttonClasses({ variant: "primary", size: "lg", className: "text-sm" })}
           >
             Spustiť kalkulačku →
           </Link>
@@ -72,11 +70,8 @@ export default async function Home() {
       )}
 
       {/* Feature cards */}
-      <section className="max-w-content mx-auto px-6 py-12">
-        <div
-          className="grid gap-px bg-border"
-          style={{ gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))" }}
-        >
+      <section className="max-w-content mx-auto px-6 py-12 md:py-16">
+        <div className="feature-grid grid gap-px bg-border">
           {FEATURE_CARDS.map((card, i) => (
             <Link
               key={card.href}
@@ -85,10 +80,10 @@ export default async function Home() {
             >
               {/* Editorial header */}
               <div className="flex items-center gap-3 px-5 py-2.5 border-b border-border">
-                <span className="text-[10px] font-mono text-muted tabular-nums">
+                <span className="text-micro font-mono text-muted tabular-nums">
                   0{i + 1}
                 </span>
-                <span className="text-[10px] tracking-[0.1em] uppercase text-muted font-semibold">
+                <span className="text-label text-muted">
                   {card.title}
                 </span>
               </div>
@@ -98,13 +93,13 @@ export default async function Home() {
               </div>
               {/* Content */}
               <div className="p-5">
-                <h3 className="text-[15px] font-bold text-ink mb-1.5">
+                <h3 className="mb-1.5 text-base font-bold text-ink">
                   {card.title}
                 </h3>
-                <p className="text-[12px] text-secondary leading-[1.55] mb-4">
+                <p className="mb-4 text-xs leading-relaxed text-secondary">
                   {card.desc}
                 </p>
-                <span className="text-[12px] font-semibold text-ink group-hover:underline">
+                <span className="text-xs font-semibold text-ink group-hover:underline">
                   Otvoriť →
                 </span>
               </div>
