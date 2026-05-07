@@ -60,6 +60,86 @@ function defaultFetcher(url: string): Promise<string> {
   });
 }
 
+/**
+ * Fetch legislation list for an MP via ASP.NET form POST.
+ * The NRSR sslp GET endpoint (zakony/sslp?PredkladatelPoslanecId=X) hangs —
+ * it requires a proper form POST with ViewState extracted from a prior GET.
+ * Flow: GET sslp form → extract ViewState → POST with mpsCombo=personId →
+ * follow 302 redirect → return result HTML.
+ */
+export async function fetchLegislationHtml(
+  personId: string,
+  term: number
+): Promise<string> {
+  const sslpUrl = `${BASE_URL}/web/Default.aspx?sid=zakony/sslp`;
+  const headers = {
+    "User-Agent": USER_AGENT,
+    "Accept": "text/html,application/xhtml+xml",
+    "Accept-Language": "sk-SK,sk;q=0.9",
+  };
+
+  // Step 1: GET the search form to obtain ViewState tokens
+  const formResp = await fetch(sslpUrl, {
+    signal: AbortSignal.timeout(15_000),
+    headers,
+  });
+  if (!formResp.ok) throw new Error(`sslp form GET: HTTP ${formResp.status}`);
+  const formHtml = await formResp.text();
+
+  const vsMatch = formHtml.match(/id="__VIEWSTATE"\s+value="([^"]+)"/);
+  const evvMatch = formHtml.match(/id="__EVENTVALIDATION"\s+value="([^"]+)"/);
+  const vsgMatch = formHtml.match(/id="__VIEWSTATEGENERATOR"\s+value="([^"]+)"/);
+  if (!vsMatch || !evvMatch) throw new Error("sslp form: ViewState not found");
+
+  // Collect session cookies from form GET
+  const setCookie = formResp.headers.get("set-cookie") ?? "";
+  const cookieHeader = setCookie
+    .split(",")
+    .map((c) => c.split(";")[0].trim())
+    .filter(Boolean)
+    .join("; ");
+
+  // Step 2: POST the search form
+  const params = new URLSearchParams({
+    "__EVENTTARGET": "",
+    "__EVENTARGUMENT": "",
+    "__LASTFOCUS": "",
+    "__VIEWSTATE": vsMatch[1],
+    "__VIEWSTATEGENERATOR": vsgMatch?.[1] ?? "",
+    "__SCROLLPOSITIONX": "0",
+    "__SCROLLPOSITIONY": "0",
+    "__EVENTVALIDATION": evvMatch[1],
+    "_sectionLayoutContainer$ctl01$ctlNazov": "",
+    "_sectionLayoutContainer$ctl01$ctlCPT": "",
+    "_sectionLayoutContainer$ctl01$ctlPredkladatelName": "",
+    "_sectionLayoutContainer$ctl01$_Ciastka": "",
+    "_sectionLayoutContainer$ctl01$_Cislo": "",
+    "_sectionLayoutContainer$ctl01$ctlCisObdobia": String(term),
+    "_sectionLayoutContainer$ctl01$ctlCategory": "-1",
+    "_sectionLayoutContainer$ctl01$ctlPredkladatel": "0",  // Poslanci NR SR
+    "_sectionLayoutContainer$ctl01$_mpsCombo": personId,
+    "_sectionLayoutContainer$ctl01$ctlView": "Podatelna",
+    "_sectionLayoutContainer$ctl01$cmdSearch": "Vyhľadať",
+  });
+
+  const postResp = await fetch(sslpUrl, {
+    method: "POST",
+    signal: AbortSignal.timeout(20_000),
+    redirect: "follow",
+    headers: {
+      ...headers,
+      "Content-Type": "application/x-www-form-urlencoded",
+      "Origin": BASE_URL,
+      "Referer": sslpUrl,
+      ...(cookieHeader ? { "Cookie": cookieHeader } : {}),
+    },
+    body: params.toString(),
+  });
+
+  if (!postResp.ok) throw new Error(`sslp POST: HTTP ${postResp.status}`);
+  return postResp.text();
+}
+
 // ─── Slug ────────────────────────────────────────────────
 
 export function makeSlug(name: string): string {
@@ -668,25 +748,27 @@ export function parseQuestionsList(html: string): ScrapedQuestion[] {
 export function parseLegislationList(html: string): ScrapedLegislationItem[] {
   const $ = cheerio.load(html);
   const out: ScrapedLegislationItem[] = [];
-  // SSLP grid (no fixture captured — endpoint hangs). Best-effort parser using
-  // the standard tab_zoznam template; columns assumed: [Číslo tlače, Dátum, Názov, Stav].
+  // SSLP result grid columns (observed from POST response):
+  //   [0] Návrh zákona (title, long text with link to zakon/zakon)
+  //   [1] ČPT (cisloTlace, numeric, with link to cpt)
+  //   [2] Stav (status, short text e.g. "Evidencia")
+  //   [3] Doručený (date submitted)
+  //   [4] Schválený (date approved, may be empty)
+  //   [5] Predkladateľ  [6] Kategória
+  // "nie sú evidované" message = no legislation → returns []
   const rows = parseTabZoznamRows($, "table.tab_zoznam");
   for (const r of rows) {
     if (r.cells.length < 3) continue;
-    let cisloTlace: string | null = null;
-    let date: string | null = null;
-    let title = "";
-    let status: string | null = null;
-    for (const c of r.cells) {
-      if (!date) {
-        const d = parseSlovakDate(c);
-        if (d) { date = d; continue; }
-      }
-      if (!cisloTlace && /^\d{1,5}$/.test(c)) { cisloTlace = c; continue; }
-      if (!title && c.length > 15) { title = c; continue; }
-      if (title && !status && c.length < 60 && c.length > 0) status = c;
-    }
-    if (!date || !title) continue;
+    // col 0 = title (first cell with link to zakon)
+    const title = r.cells[0];
+    if (!title || title.length < 5) continue;
+    // col 1 = cisloTlace (numeric)
+    const cisloTlace = /^\d{1,5}$/.test(r.cells[1]) ? r.cells[1] : null;
+    // col 2 = status
+    const status = r.cells[2] || null;
+    // col 3 = date submitted (Doručený)
+    const date = parseSlovakDate(r.cells[3]);
+    if (!date) continue;
     const $link = r.row.find("a[href*='zakon']").first();
     const href = $link.attr("href") ?? "";
     if (!href) continue;
