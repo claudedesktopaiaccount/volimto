@@ -9,6 +9,13 @@ import {
   companies,
   contracts,
   partyPromises,
+  mpInterpellations,
+  mpQuestions,
+  mpLegislation,
+  mpAmendments,
+  mpForeignTrips,
+  mpAssistants,
+  mpOffices,
 } from "@/lib/db/schema";
 import { eq, desc, count, sum, sql, and, asc } from "drizzle-orm";
 
@@ -321,4 +328,146 @@ export async function getMpPartyPromises(
     .orderBy(asc(partyPromises.status), asc(partyPromises.category));
 
   return rows;
+}
+
+// ─── MP Activities (interpellations / questions / legislation / amendments / trips / assistants / offices)
+
+export interface MpActivityStats {
+  voteCount: number;
+  attendancePct: number;
+  speechCount: number;
+  interpellationCount: number;
+  questionCount: number;
+  legislationCount: number;
+  amendmentCount: number;
+  tripCount: number;
+}
+
+export async function getMpActivityStats(
+  db: Database,
+  mpId: number
+): Promise<MpActivityStats> {
+  const [voteRow] = await db
+    .select({
+      total: count(),
+      present: sum(sql<number>`CASE WHEN ${voteRecords.choice} = 'neprítomný' THEN 0 ELSE 1 END`).mapWith(Number),
+    })
+    .from(voteRecords)
+    .where(eq(voteRecords.mpId, mpId));
+
+  const total = voteRow?.total ?? 0;
+  const present = voteRow?.present ?? 0;
+  const attendancePct = total > 0 ? Math.round((present / total) * 100) : 0;
+
+  const counts = await Promise.all([
+    db.select({ c: count() }).from(speeches).where(eq(speeches.mpId, mpId)),
+    db.select({ c: count() }).from(mpInterpellations).where(eq(mpInterpellations.mpId, mpId)),
+    db.select({ c: count() }).from(mpQuestions).where(eq(mpQuestions.mpId, mpId)),
+    db.select({ c: count() }).from(mpLegislation).where(eq(mpLegislation.mpId, mpId)),
+    db.select({ c: count() }).from(mpAmendments).where(eq(mpAmendments.mpId, mpId)),
+    db.select({ c: count() }).from(mpForeignTrips).where(eq(mpForeignTrips.mpId, mpId)),
+  ]);
+
+  return {
+    voteCount: total,
+    attendancePct,
+    speechCount: counts[0][0]?.c ?? 0,
+    interpellationCount: counts[1][0]?.c ?? 0,
+    questionCount: counts[2][0]?.c ?? 0,
+    legislationCount: counts[3][0]?.c ?? 0,
+    amendmentCount: counts[4][0]?.c ?? 0,
+    tripCount: counts[5][0]?.c ?? 0,
+  };
+}
+
+export interface InterpellationRow { id: number; date: string; addressee: string | null; subject: string; url: string; answerUrl: string | null; }
+export interface QuestionRow { id: number; date: string; subject: string; url: string; }
+export interface LegislationRow { id: number; cisloTlace: string | null; title: string; date: string; status: string | null; url: string; }
+export interface AmendmentRow { id: number; toLaw: string; date: string; url: string; }
+export interface TripRow { id: number; date: string; country: string; purpose: string | null; costEur: number | null; sourceUrl: string | null; }
+export interface AssistantRow { id: number; name: string; type: string | null; }
+export interface OfficeRow { id: number; address: string; city: string | null; }
+
+export async function getMpInterpellations(
+  db: Database, mpId: number, opts: { page?: number; pageSize?: number } = {}
+): Promise<{ rows: InterpellationRow[]; total: number }> {
+  const { page = 1, pageSize = 20 } = opts;
+  const rows = await db.select({
+    id: mpInterpellations.id, date: mpInterpellations.date,
+    addressee: mpInterpellations.addressee, subject: mpInterpellations.subject,
+    url: mpInterpellations.url, answerUrl: mpInterpellations.answerUrl,
+  })
+    .from(mpInterpellations).where(eq(mpInterpellations.mpId, mpId))
+    .orderBy(desc(mpInterpellations.date)).limit(pageSize).offset((page - 1) * pageSize);
+  const [t] = await db.select({ total: count() }).from(mpInterpellations).where(eq(mpInterpellations.mpId, mpId));
+  return { rows, total: t?.total ?? 0 };
+}
+
+export async function getMpQuestions(
+  db: Database, mpId: number, opts: { page?: number; pageSize?: number } = {}
+): Promise<{ rows: QuestionRow[]; total: number }> {
+  const { page = 1, pageSize = 20 } = opts;
+  const rows = await db.select({
+    id: mpQuestions.id, date: mpQuestions.date,
+    subject: mpQuestions.subject, url: mpQuestions.url,
+  })
+    .from(mpQuestions).where(eq(mpQuestions.mpId, mpId))
+    .orderBy(desc(mpQuestions.date)).limit(pageSize).offset((page - 1) * pageSize);
+  const [t] = await db.select({ total: count() }).from(mpQuestions).where(eq(mpQuestions.mpId, mpId));
+  return { rows, total: t?.total ?? 0 };
+}
+
+export async function getMpLegislation(
+  db: Database, mpId: number, opts: { page?: number; pageSize?: number } = {}
+): Promise<{ rows: LegislationRow[]; total: number }> {
+  const { page = 1, pageSize = 20 } = opts;
+  const rows = await db.select({
+    id: mpLegislation.id, cisloTlace: mpLegislation.cisloTlace,
+    title: mpLegislation.title, date: mpLegislation.date,
+    status: mpLegislation.status, url: mpLegislation.url,
+  })
+    .from(mpLegislation).where(eq(mpLegislation.mpId, mpId))
+    .orderBy(desc(mpLegislation.date)).limit(pageSize).offset((page - 1) * pageSize);
+  const [t] = await db.select({ total: count() }).from(mpLegislation).where(eq(mpLegislation.mpId, mpId));
+  return { rows, total: t?.total ?? 0 };
+}
+
+export async function getMpAmendments(
+  db: Database, mpId: number, opts: { page?: number; pageSize?: number } = {}
+): Promise<{ rows: AmendmentRow[]; total: number }> {
+  const { page = 1, pageSize = 20 } = opts;
+  const rows = await db.select({
+    id: mpAmendments.id, toLaw: mpAmendments.toLaw,
+    date: mpAmendments.date, url: mpAmendments.url,
+  })
+    .from(mpAmendments).where(eq(mpAmendments.mpId, mpId))
+    .orderBy(desc(mpAmendments.date)).limit(pageSize).offset((page - 1) * pageSize);
+  const [t] = await db.select({ total: count() }).from(mpAmendments).where(eq(mpAmendments.mpId, mpId));
+  return { rows, total: t?.total ?? 0 };
+}
+
+export async function getMpForeignTrips(db: Database, mpId: number): Promise<TripRow[]> {
+  return db.select({
+    id: mpForeignTrips.id, date: mpForeignTrips.date,
+    country: mpForeignTrips.country, purpose: mpForeignTrips.purpose,
+    costEur: mpForeignTrips.costEur, sourceUrl: mpForeignTrips.sourceUrl,
+  })
+    .from(mpForeignTrips).where(eq(mpForeignTrips.mpId, mpId))
+    .orderBy(desc(mpForeignTrips.date));
+}
+
+export async function getMpAssistants(db: Database, mpId: number): Promise<AssistantRow[]> {
+  return db.select({
+    id: mpAssistants.id, name: mpAssistants.name, type: mpAssistants.type,
+  })
+    .from(mpAssistants).where(eq(mpAssistants.mpId, mpId))
+    .orderBy(asc(mpAssistants.name));
+}
+
+export async function getMpOffices(db: Database, mpId: number): Promise<OfficeRow[]> {
+  return db.select({
+    id: mpOffices.id, address: mpOffices.address, city: mpOffices.city,
+  })
+    .from(mpOffices).where(eq(mpOffices.mpId, mpId))
+    .orderBy(asc(mpOffices.city));
 }

@@ -622,6 +622,127 @@ export const donations = sqliteTable(
   ]
 );
 
+// ─── MP Activities (NRSR per-poslanec scraping) ───────────
+
+export const mpInterpellations = sqliteTable(
+  "mp_interpellations",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    mpId: integer("mp_id").notNull().references(() => mps.id, { onDelete: "cascade" }),
+    date: text("date").notNull(),         // ISO date
+    addressee: text("addressee"),         // adresát interpelácie
+    subject: text("subject").notNull(),   // predmet
+    url: text("url").notNull(),
+    answerUrl: text("answer_url"),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    index("mp_interp_mp_idx").on(table.mpId),
+    index("mp_interp_date_idx").on(table.date),
+    uniqueIndex("mp_interp_mp_url_unique").on(table.mpId, table.url),
+  ]
+);
+
+export const mpQuestions = sqliteTable(
+  "mp_questions",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    mpId: integer("mp_id").notNull().references(() => mps.id, { onDelete: "cascade" }),
+    date: text("date").notNull(),
+    subject: text("subject").notNull(),
+    url: text("url").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    index("mp_questions_mp_idx").on(table.mpId),
+    index("mp_questions_date_idx").on(table.date),
+    uniqueIndex("mp_questions_mp_url_unique").on(table.mpId, table.url),
+  ]
+);
+
+export const mpLegislation = sqliteTable(
+  "mp_legislation",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    mpId: integer("mp_id").notNull().references(() => mps.id, { onDelete: "cascade" }),
+    cisloTlace: text("cislo_tlace"),       // číslo parlamentnej tlače
+    title: text("title").notNull(),
+    date: text("date").notNull(),
+    status: text("status"),                // stav legislatívneho procesu
+    url: text("url").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    index("mp_legis_mp_idx").on(table.mpId),
+    index("mp_legis_date_idx").on(table.date),
+    uniqueIndex("mp_legis_mp_url_unique").on(table.mpId, table.url),
+  ]
+);
+
+export const mpAmendments = sqliteTable(
+  "mp_amendments",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    mpId: integer("mp_id").notNull().references(() => mps.id, { onDelete: "cascade" }),
+    toLaw: text("to_law").notNull(),       // k akému zákonu/tlači
+    date: text("date").notNull(),
+    url: text("url").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    index("mp_amend_mp_idx").on(table.mpId),
+    index("mp_amend_date_idx").on(table.date),
+    uniqueIndex("mp_amend_mp_url_unique").on(table.mpId, table.url),
+  ]
+);
+
+export const mpForeignTrips = sqliteTable(
+  "mp_foreign_trips",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    mpId: integer("mp_id").notNull().references(() => mps.id, { onDelete: "cascade" }),
+    date: text("date").notNull(),
+    country: text("country").notNull(),
+    purpose: text("purpose"),
+    costEur: real("cost_eur"),
+    sourceUrl: text("source_url"),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    index("mp_trips_mp_idx").on(table.mpId),
+    index("mp_trips_date_idx").on(table.date),
+  ]
+);
+
+export const mpAssistants = sqliteTable(
+  "mp_assistants",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    mpId: integer("mp_id").notNull().references(() => mps.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    type: text("type"),                    // 'asistent' | 'odborný' | iné
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    index("mp_assist_mp_idx").on(table.mpId),
+    uniqueIndex("mp_assist_mp_name_unique").on(table.mpId, table.name),
+  ]
+);
+
+export const mpOffices = sqliteTable(
+  "mp_offices",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    mpId: integer("mp_id").notNull().references(() => mps.id, { onDelete: "cascade" }),
+    address: text("address").notNull(),
+    city: text("city"),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    index("mp_offices_mp_idx").on(table.mpId),
+  ]
+);
+
 // ─── Contracts — Public procurement contracts (UVO/EKS/CRZ) ─
 
 export const contracts = sqliteTable(

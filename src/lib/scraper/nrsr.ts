@@ -516,3 +516,295 @@ export function parseSpeechesList(html: string, limit: number): ScrapedSpeech[] 
 
   return speeches;
 }
+
+// ─── scrapeMpActivities — per-MP NRSR enrichment ──────────
+
+export interface ScrapedInterpellation {
+  date: string;
+  addressee: string | null;
+  subject: string;
+  url: string;
+  answerUrl: string | null;
+}
+
+export interface ScrapedQuestion {
+  date: string;
+  subject: string;
+  url: string;
+}
+
+export interface ScrapedLegislationItem {
+  cisloTlace: string | null;
+  title: string;
+  date: string;
+  status: string | null;
+  url: string;
+}
+
+export interface ScrapedAmendment {
+  toLaw: string;
+  date: string;
+  url: string;
+}
+
+export interface ScrapedForeignTrip {
+  date: string;
+  country: string;
+  purpose: string | null;
+  costEur: number | null;
+  sourceUrl: string;
+}
+
+export interface ScrapedAssistant {
+  name: string;
+  type: string | null;
+}
+
+export interface ScrapedOffice {
+  address: string;
+  city: string | null;
+}
+
+export interface ScrapedMpActivities {
+  interpellations: ScrapedInterpellation[];
+  questions: ScrapedQuestion[];
+  legislation: ScrapedLegislationItem[];
+  amendments: ScrapedAmendment[];
+  trips: ScrapedForeignTrip[];
+  assistants: ScrapedAssistant[];
+  offices: ScrapedOffice[];
+}
+
+const MP_ACTIVITY_URLS = (personId: string, term: number) => ({
+  interpellations: `${BASE_URL}/web/Default.aspx?sid=schodze/interpelacie_result&ZadavatelId=${personId}&CisObdobia=${term}`,
+  questions:      `${BASE_URL}/web/Default.aspx?sid=schodze/ho_result&AssignerId=${personId}&CisObdobia=${term}`,
+  legislation:    `${BASE_URL}/web/Default.aspx?sid=zakony/sslp&PredkladatelID=0&PredkladatelPoslanecId=${personId}&CisObdobia=${term}`,
+  amendments:     `${BASE_URL}/web/Default.aspx?sid=schodze/nrepdn&CisObdobia=${term}&PoslanecMasterID=${personId}`,
+  trips:          `${BASE_URL}/web/Default.aspx?sid=poslanci/zpc&PoslanecID=${personId}&CisObdobia=${term}`,
+  assistants:     `${BASE_URL}/web/Default.aspx?sid=poslanci/posl_asistenti&PoslanecID=${personId}&CisObdobia=${term}`,
+  offices:        `${BASE_URL}/web/Default.aspx?sid=poslanci/kancelarie&PoslanecID=${personId}&CisObdobia=${term}`,
+});
+
+function parseSlovakDate(raw: string): string | null {
+  // "06. 02. 2024" | "10. 1. 2024" | "1. 6. 2025"
+  const m = raw.match(/(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})/);
+  if (!m) return null;
+  return `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
+}
+
+function absUrl(href: string): string {
+  if (!href) return "";
+  if (href.startsWith("http")) return href;
+  return `${BASE_URL}/web/${href.replace(/^\/?web\//, "")}`;
+}
+
+function parseEur(raw: string): number | null {
+  // "2 314,00 €" → 2314.00
+  const cleaned = raw.replace(/[^\d,.-]/g, "").replace(/\s/g, "").replace(",", ".");
+  const n = parseFloat(cleaned);
+  return isFinite(n) ? n : null;
+}
+
+/** Parse a tab_zoznam table and return raw row cell texts (header row skipped). */
+function parseTabZoznamRows(
+  $: cheerio.CheerioAPI,
+  tableSelector: string
+): { cells: string[]; cellHtml: string[]; row: cheerio.Cheerio<any> }[] {
+  const rows: { cells: string[]; cellHtml: string[]; row: cheerio.Cheerio<any> }[] = [];
+  $(`${tableSelector} tr`).each((_, tr) => {
+    const $tr = $(tr);
+    if ($tr.find("th").length > 0) return;
+    const cells: string[] = [];
+    const cellHtml: string[] = [];
+    $tr.find("td").each((_, td) => {
+      const $td = $(td);
+      cells.push($td.text().replace(/\s+/g, " ").trim());
+      cellHtml.push($td.html() ?? "");
+    });
+    if (cells.length === 0) return;
+    rows.push({ cells, cellHtml, row: $tr });
+  });
+  return rows;
+}
+
+export function parseInterpellationsList(html: string): ScrapedInterpellation[] {
+  const $ = cheerio.load(html);
+  const out: ScrapedInterpellation[] = [];
+  // Columns observed: [Stav, Dátum, Predkladateľ, Adresát, Predmet/Otázka]
+  const rows = parseTabZoznamRows($, "table.tab_zoznam");
+  for (const r of rows) {
+    if (r.cells.length < 5) continue;
+    const date = parseSlovakDate(r.cells[1]);
+    if (!date) continue;
+    const addressee = r.cells[3] || null;
+    const subject = r.cells[4];
+    const $link = r.row.find("a[href*='interpelacie_detail']").first();
+    const href = $link.attr("href") ?? "";
+    if (!href) continue;
+    const url = absUrl(href);
+    out.push({ date, addressee, subject, url, answerUrl: null });
+  }
+  return out;
+}
+
+export function parseQuestionsList(html: string): ScrapedQuestion[] {
+  const $ = cheerio.load(html);
+  const out: ScrapedQuestion[] = [];
+  // Columns observed: [Stav, Dátum, Predkladateľ, Adresát, Otázka]
+  const rows = parseTabZoznamRows($, "table.tab_zoznam");
+  for (const r of rows) {
+    if (r.cells.length < 5) continue;
+    const date = parseSlovakDate(r.cells[1]);
+    if (!date) continue;
+    const subject = r.cells[4];
+    const $link = r.row.find("a[href*='ho_detail']").first();
+    const href = $link.attr("href") ?? "";
+    if (!href) continue;
+    out.push({ date, subject, url: absUrl(href) });
+  }
+  return out;
+}
+
+export function parseLegislationList(html: string): ScrapedLegislationItem[] {
+  const $ = cheerio.load(html);
+  const out: ScrapedLegislationItem[] = [];
+  // SSLP grid (no fixture captured — endpoint hangs). Best-effort parser using
+  // the standard tab_zoznam template; columns assumed: [Číslo tlače, Dátum, Názov, Stav].
+  const rows = parseTabZoznamRows($, "table.tab_zoznam");
+  for (const r of rows) {
+    if (r.cells.length < 3) continue;
+    let cisloTlace: string | null = null;
+    let date: string | null = null;
+    let title = "";
+    let status: string | null = null;
+    for (const c of r.cells) {
+      if (!date) {
+        const d = parseSlovakDate(c);
+        if (d) { date = d; continue; }
+      }
+      if (!cisloTlace && /^\d{1,5}$/.test(c)) { cisloTlace = c; continue; }
+      if (!title && c.length > 15) { title = c; continue; }
+      if (title && !status && c.length < 60 && c.length > 0) status = c;
+    }
+    if (!date || !title) continue;
+    const $link = r.row.find("a[href*='zakon']").first();
+    const href = $link.attr("href") ?? "";
+    if (!href) continue;
+    out.push({ cisloTlace, title, date, status, url: absUrl(href) });
+  }
+  return out;
+}
+
+export function parseAmendmentsList(html: string): ScrapedAmendment[] {
+  const $ = cheerio.load(html);
+  const out: ScrapedAmendment[] = [];
+  // Columns observed: [Dátum podania, Predkladateľ, K ČPT, Názov, Č. schôdze, Hlasovanie]
+  const rows = parseTabZoznamRows($, "table.tab_zoznam");
+  for (const r of rows) {
+    if (r.cells.length < 4) continue;
+    const date = parseSlovakDate(r.cells[0]);
+    if (!date) continue;
+    const toLaw = r.cells[3];
+    const $link = r.row.find("a[href*='nrepdn_detail']").first();
+    const href = $link.attr("href") ?? "";
+    if (!href || !toLaw) continue;
+    out.push({ toLaw, date, url: absUrl(href) });
+  }
+  return out;
+}
+
+export function parseForeignTripsList(html: string, sourceUrl: string): ScrapedForeignTrip[] {
+  const $ = cheerio.load(html);
+  const msg = $("#_sectionLayoutContainer_ctl01__Message").text();
+  if (msg && /nie je evidovan/i.test(msg)) return [];
+  const out: ScrapedForeignTrip[] = [];
+  // Schema not captured (Šimečka has none). Fallback: tab_zoznam rows.
+  const rows = parseTabZoznamRows($, "table.tab_zoznam");
+  for (const r of rows) {
+    if (r.cells.length < 2) continue;
+    let date: string | null = null;
+    let country = "";
+    let purpose: string | null = null;
+    let cost: number | null = null;
+    for (const c of r.cells) {
+      if (!date) { const d = parseSlovakDate(c); if (d) { date = d; continue; } }
+      if (!country && c && c.length < 40) { country = c; continue; }
+      if (/€/.test(c) && cost === null) { cost = parseEur(c); continue; }
+      if (!purpose && c.length > 15) purpose = c;
+    }
+    if (!date || !country) continue;
+    out.push({ date, country, purpose, costEur: cost, sourceUrl });
+  }
+  return out;
+}
+
+export function parseAssistantsList(html: string): ScrapedAssistant[] {
+  const $ = cheerio.load(html);
+  const out: ScrapedAssistant[] = [];
+  const rows = parseTabZoznamRows($, "table.tab_zoznam");
+  // Columns observed: [Asistenti, Od, Do, Mesačná odmena]
+  for (const r of rows) {
+    const name = r.cells[0];
+    if (!name) continue;
+    out.push({ name, type: null });
+  }
+  return out;
+}
+
+export function parseOfficesList(html: string): ScrapedOffice[] {
+  const $ = cheerio.load(html);
+  const msg = $("#_sectionLayoutContainer_ctl01__Message").text();
+  if (msg && /nie sú evidované/i.test(msg)) return [];
+  const out: ScrapedOffice[] = [];
+  const rows = parseTabZoznamRows($, "table.tab_zoznam");
+  for (const r of rows) {
+    if (r.cells.length === 0) continue;
+    const address = r.cells[0];
+    const city = r.cells[1] || null;
+    if (!address || address.length < 3) continue;
+    out.push({ address, city });
+  }
+  return out;
+}
+
+export async function scrapeMpActivities(
+  nrsrPersonId: string,
+  term: number = 9,
+  fetcher: Fetcher = defaultFetcher
+): Promise<ScrapedMpActivities> {
+  const urls = MP_ACTIVITY_URLS(nrsrPersonId, term);
+  const safe = async <T>(label: string, fn: () => Promise<T>, fallback: T): Promise<T> => {
+    try { return await fn(); }
+    catch (err) {
+      console.error(`[nrsr] mp ${nrsrPersonId} ${label} error:`, err);
+      return fallback;
+    }
+  };
+  // Sequential to be polite
+  const interpellations = await safe("interpellations",
+    async () => parseInterpellationsList(await fetcher(urls.interpellations)), []);
+  await sleep(400);
+  const questions = await safe("questions",
+    async () => parseQuestionsList(await fetcher(urls.questions)), []);
+  await sleep(400);
+  const legislation = await safe("legislation",
+    async () => parseLegislationList(await fetcher(urls.legislation)), []);
+  await sleep(400);
+  const amendments = await safe("amendments",
+    async () => parseAmendmentsList(await fetcher(urls.amendments)), []);
+  await sleep(400);
+  const trips = await safe("trips",
+    async () => parseForeignTripsList(await fetcher(urls.trips), urls.trips), []);
+  await sleep(400);
+  const assistants = await safe("assistants",
+    async () => parseAssistantsList(await fetcher(urls.assistants)), []);
+  await sleep(400);
+  const offices = await safe("offices",
+    async () => parseOfficesList(await fetcher(urls.offices)), []);
+
+  return { interpellations, questions, legislation, amendments, trips, assistants, offices };
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}

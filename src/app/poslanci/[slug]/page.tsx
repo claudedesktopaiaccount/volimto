@@ -6,12 +6,17 @@ import {
   getMpSpeeches,
   getMpCompanies,
   getMpContracts,
-  getMpPartyPromises,
+  getMpActivityStats,
+  getMpLegislation,
+  getMpAmendments,
+  getMpInterpellations,
+  getMpQuestions,
 } from "@/lib/db/mps";
 import MpTabs from "./MpTabs";
+import MpActivityStrip from "./MpActivityStats";
 import VotingTab from "./tabs/VotingTab";
 import SpeechesTab from "./tabs/SpeechesTab";
-import PromisesTab from "./tabs/PromisesTab";
+import LegislationTab from "./tabs/LegislationTab";
 import CompaniesTab from "./tabs/CompaniesTab";
 import ContractsTab from "./tabs/ContractsTab";
 import type { Metadata } from "next";
@@ -33,7 +38,7 @@ export async function generateMetadata({
   };
 }
 
-const VALID_TABS = ["hlasovanie", "reci", "sluby", "firmy", "zmluvy"] as const;
+const VALID_TABS = ["hlasovanie", "reci", "predlozene", "firmy", "zmluvy"] as const;
 type Tab = (typeof VALID_TABS)[number];
 
 export default async function MpDetailPage({
@@ -41,7 +46,7 @@ export default async function MpDetailPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ tab?: string; page?: string }>;
+  searchParams: Promise<{ tab?: string; page?: string; sub?: string }>;
 }) {
   const [{ slug }, sp] = await Promise.all([params, searchParams]);
 
@@ -57,20 +62,39 @@ export default async function MpDetailPage({
 
   // ─── Fetch only active tab data ───────────────────────────────────────────
 
+  const VALID_SUBS = ["reci", "interpelacie", "otazky"] as const;
+  type Sub = (typeof VALID_SUBS)[number];
+  const rawSub = sp.sub ?? "reci";
+  const activeSub: Sub = (VALID_SUBS as readonly string[]).includes(rawSub)
+    ? (rawSub as Sub)
+    : "reci";
+
   let votesData: Awaited<ReturnType<typeof getMpVotes>> | null = null;
   let speechesData: Awaited<ReturnType<typeof getMpSpeeches>> | null = null;
-  let promisesData: Awaited<ReturnType<typeof getMpPartyPromises>> | null = null;
+  let interpellationsData: Awaited<ReturnType<typeof getMpInterpellations>> | null = null;
+  let questionsData: Awaited<ReturnType<typeof getMpQuestions>> | null = null;
+  let legislationData: Awaited<ReturnType<typeof getMpLegislation>> | null = null;
+  let amendmentsData: Awaited<ReturnType<typeof getMpAmendments>> | null = null;
   let companiesData: Awaited<ReturnType<typeof getMpCompanies>> | null = null;
   let contractsData: Awaited<ReturnType<typeof getMpContracts>> | null = null;
+
+  const stats = await getMpActivityStats(db, mp.id);
 
   if (activeTab === "hlasovanie") {
     votesData = await getMpVotes(db, mp.id, { page });
   } else if (activeTab === "reci") {
-    speechesData = await getMpSpeeches(db, mp.id, { page });
-  } else if (activeTab === "sluby") {
-    promisesData = mp.partyId
-      ? await getMpPartyPromises(db, mp.partyId)
-      : [];
+    if (activeSub === "interpelacie") {
+      interpellationsData = await getMpInterpellations(db, mp.id, { page });
+    } else if (activeSub === "otazky") {
+      questionsData = await getMpQuestions(db, mp.id, { page });
+    } else {
+      speechesData = await getMpSpeeches(db, mp.id, { page });
+    }
+  } else if (activeTab === "predlozene") {
+    [legislationData, amendmentsData] = await Promise.all([
+      getMpLegislation(db, mp.id, { pageSize: 50 }),
+      getMpAmendments(db, mp.id, { pageSize: 50 }),
+    ]);
   } else if (activeTab === "firmy") {
     companiesData = await getMpCompanies(db, mp.id);
   } else if (activeTab === "zmluvy") {
@@ -144,6 +168,9 @@ export default async function MpDetailPage({
         </div>
       </div>
 
+      {/* Aktivita stat strip */}
+      <MpActivityStrip stats={stats} />
+
       {/* Tabs nav (client component) */}
       <MpTabs activeTab={activeTab} mpSlug={slug} />
 
@@ -157,19 +184,23 @@ export default async function MpDetailPage({
           activeTab={activeTab}
         />
       )}
-      {activeTab === "reci" && speechesData && (
+      {activeTab === "reci" && (
         <SpeechesTab
-          speeches={speechesData.speeches}
-          total={speechesData.total}
-          page={page}
+          activeSub={activeSub}
           mpSlug={slug}
-          activeTab={activeTab}
+          page={page}
+          speeches={speechesData?.speeches ?? null}
+          speechesTotal={speechesData?.total ?? 0}
+          interpellations={interpellationsData?.rows ?? null}
+          interpellationsTotal={interpellationsData?.total ?? 0}
+          questions={questionsData?.rows ?? null}
+          questionsTotal={questionsData?.total ?? 0}
         />
       )}
-      {activeTab === "sluby" && promisesData && (
-        <PromisesTab
-          promises={promisesData}
-          partyName={mp.partyName}
+      {activeTab === "predlozene" && legislationData && amendmentsData && (
+        <LegislationTab
+          legislation={legislationData.rows}
+          amendments={amendmentsData.rows}
         />
       )}
       {activeTab === "firmy" && companiesData && (

@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 const TABS = [
   { value: "hlasovanie", label: "Hlasovanie" },
   { value: "reci", label: "Reči" },
-  { value: "sluby", label: "Sľuby" },
+  { value: "predlozene", label: "Čo predložil/a" },
   { value: "firmy", label: "Firmy" },
   { value: "zmluvy", label: "Zmluvy" },
 ] as const;

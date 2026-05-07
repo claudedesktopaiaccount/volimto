@@ -1,11 +1,24 @@
 import type { Database } from "./index";
-import { mps, votes, voteRecords, speeches } from "./schema";
+import {
+  mps,
+  votes,
+  voteRecords,
+  speeches,
+  mpInterpellations,
+  mpQuestions,
+  mpLegislation,
+  mpAmendments,
+  mpForeignTrips,
+  mpAssistants,
+  mpOffices,
+} from "./schema";
 import { eq, inArray } from "drizzle-orm";
 import type {
   ScrapedMp,
   ScrapedVote,
   ScrapedVoteRecord,
   ScrapedSpeech,
+  ScrapedMpActivities,
 } from "@/lib/scraper/nrsr";
 
 const CHUNK = 50;
@@ -327,4 +340,117 @@ export async function upsertSpeeches(
   }
 
   return count;
+}
+
+// ─── MP Activities upserts ────────────────────────────────
+
+export interface UpsertActivitiesCounts {
+  interpellations: number;
+  questions: number;
+  legislation: number;
+  amendments: number;
+  trips: number;
+  assistants: number;
+  offices: number;
+}
+
+/**
+ * Replace this MP's activity rows with the freshly scraped set.
+ * Tables with a unique index are upserted via onConflictDoNothing on (mpId, url|name).
+ * Tables without a unique index (trips, offices) are wiped-and-reinserted per MP.
+ */
+export async function upsertMpActivities(
+  db: Database,
+  mpId: number,
+  activities: ScrapedMpActivities
+): Promise<UpsertActivitiesCounts> {
+  const now = new Date().toISOString();
+  const counts: UpsertActivitiesCounts = {
+    interpellations: 0, questions: 0, legislation: 0,
+    amendments: 0, trips: 0, assistants: 0, offices: 0,
+  };
+
+  if (activities.interpellations.length > 0) {
+    const rows = activities.interpellations.map((i) => ({
+      mpId, date: i.date, addressee: i.addressee, subject: i.subject,
+      url: i.url, answerUrl: i.answerUrl, createdAt: now,
+    }));
+    for (const batch of chunks(rows, CHUNK)) {
+      const r = await db.insert(mpInterpellations).values(batch)
+        .onConflictDoNothing().returning({ id: mpInterpellations.id });
+      counts.interpellations += r.length;
+    }
+  }
+
+  if (activities.questions.length > 0) {
+    const rows = activities.questions.map((q) => ({
+      mpId, date: q.date, subject: q.subject, url: q.url, createdAt: now,
+    }));
+    for (const batch of chunks(rows, CHUNK)) {
+      const r = await db.insert(mpQuestions).values(batch)
+        .onConflictDoNothing().returning({ id: mpQuestions.id });
+      counts.questions += r.length;
+    }
+  }
+
+  if (activities.legislation.length > 0) {
+    const rows = activities.legislation.map((l) => ({
+      mpId, cisloTlace: l.cisloTlace, title: l.title, date: l.date,
+      status: l.status, url: l.url, createdAt: now,
+    }));
+    for (const batch of chunks(rows, CHUNK)) {
+      const r = await db.insert(mpLegislation).values(batch)
+        .onConflictDoNothing().returning({ id: mpLegislation.id });
+      counts.legislation += r.length;
+    }
+  }
+
+  if (activities.amendments.length > 0) {
+    const rows = activities.amendments.map((a) => ({
+      mpId, toLaw: a.toLaw, date: a.date, url: a.url, createdAt: now,
+    }));
+    for (const batch of chunks(rows, CHUNK)) {
+      const r = await db.insert(mpAmendments).values(batch)
+        .onConflictDoNothing().returning({ id: mpAmendments.id });
+      counts.amendments += r.length;
+    }
+  }
+
+  // Trips: no unique index — replace
+  await db.delete(mpForeignTrips).where(eq(mpForeignTrips.mpId, mpId));
+  if (activities.trips.length > 0) {
+    const rows = activities.trips.map((t) => ({
+      mpId, date: t.date, country: t.country, purpose: t.purpose,
+      costEur: t.costEur, sourceUrl: t.sourceUrl, createdAt: now,
+    }));
+    for (const batch of chunks(rows, CHUNK)) {
+      await db.insert(mpForeignTrips).values(batch);
+      counts.trips += batch.length;
+    }
+  }
+
+  if (activities.assistants.length > 0) {
+    const rows = activities.assistants.map((a) => ({
+      mpId, name: a.name, type: a.type, createdAt: now,
+    }));
+    for (const batch of chunks(rows, CHUNK)) {
+      const r = await db.insert(mpAssistants).values(batch)
+        .onConflictDoNothing().returning({ id: mpAssistants.id });
+      counts.assistants += r.length;
+    }
+  }
+
+  // Offices: no unique index — replace
+  await db.delete(mpOffices).where(eq(mpOffices.mpId, mpId));
+  if (activities.offices.length > 0) {
+    const rows = activities.offices.map((o) => ({
+      mpId, address: o.address, city: o.city, createdAt: now,
+    }));
+    for (const batch of chunks(rows, CHUNK)) {
+      await db.insert(mpOffices).values(batch);
+      counts.offices += batch.length;
+    }
+  }
+
+  return counts;
 }
