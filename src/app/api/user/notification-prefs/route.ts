@@ -21,8 +21,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ onNewPoll: false, onScoreChange: false });
   }
   return NextResponse.json({
-    onNewPoll: prefs[0].onNewPoll === 1,
-    onScoreChange: prefs[0].onScoreChange === 1,
+    onNewPoll: prefs[0].onNewPoll,
+    onScoreChange: prefs[0].onScoreChange,
   });
 }
 
@@ -41,15 +41,15 @@ export async function POST(req: NextRequest) {
     .insert(userNotificationPrefs)
     .values({
       userId: session.userId,
-      onNewPoll: body.onNewPoll ? 1 : 0,
-      onScoreChange: body.onScoreChange ? 1 : 0,
+      onNewPoll: body.onNewPoll,
+      onScoreChange: body.onScoreChange,
       updatedAt: now,
     })
     .onConflictDoUpdate({
       target: [userNotificationPrefs.userId],
       set: {
-        onNewPoll: body.onNewPoll ? 1 : 0,
-        onScoreChange: body.onScoreChange ? 1 : 0,
+        onNewPoll: body.onNewPoll,
+        onScoreChange: body.onScoreChange,
         updatedAt: now,
       },
     });

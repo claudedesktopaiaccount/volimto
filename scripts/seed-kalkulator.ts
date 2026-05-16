@@ -1,33 +1,13 @@
 /**
  * One-time seeder: populates kalkulator_weights from the QUESTIONS array.
  * Run with: npx tsx scripts/seed-kalkulator.ts
- *
- * Requires env vars: CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_DATABASE_ID, CLOUDFLARE_D1_TOKEN
  */
+import { getDb } from "../src/lib/db";
+import { kalkulatorWeights } from "../src/lib/db/schema";
 import { QUESTIONS } from "../src/lib/kalkulator/questions";
 
-const accountId = process.env.CLOUDFLARE_ACCOUNT_ID!;
-const databaseId = process.env.CLOUDFLARE_DATABASE_ID!;
-const token = process.env.CLOUDFLARE_D1_TOKEN!;
-
-async function runSql(sql: string, params: unknown[]) {
-  const res = await fetch(
-    `https://api.cloudflare.com/client/v4/accounts/${accountId}/d1/database/${databaseId}/query`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ sql, params }),
-    }
-  );
-  const json = await res.json() as { success: boolean; errors?: unknown[] };
-  if (!json.success) throw new Error(JSON.stringify(json.errors));
-  return json;
-}
-
 async function main() {
+  const db = getDb();
   const now = new Date().toISOString();
   let count = 0;
 
@@ -35,13 +15,21 @@ async function main() {
     for (let answerIndex = 0; answerIndex < question.answers.length; answerIndex++) {
       const answer = question.answers[answerIndex];
       for (const [partyId, weight] of Object.entries(answer.weights)) {
-        await runSql(
-          `INSERT INTO kalkulator_weights (question_id, answer_index, party_id, weight, source_url, updated_at)
-           VALUES (?, ?, ?, ?, NULL, ?)
-           ON CONFLICT(question_id, answer_index, party_id) DO UPDATE SET
-             weight = excluded.weight, updated_at = excluded.updated_at`,
-          [question.id, answerIndex, partyId, weight, now]
-        );
+        await db.insert(kalkulatorWeights).values({
+          questionId: question.id,
+          answerIndex,
+          partyId,
+          weight,
+          sourceUrl: null,
+          updatedAt: now,
+        }).onConflictDoUpdate({
+          target: [
+            kalkulatorWeights.questionId,
+            kalkulatorWeights.answerIndex,
+            kalkulatorWeights.partyId,
+          ],
+          set: { weight, updatedAt: now },
+        });
         count++;
       }
     }

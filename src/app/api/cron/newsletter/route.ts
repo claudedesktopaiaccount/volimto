@@ -23,8 +23,7 @@ export async function GET(req: NextRequest) {
         isNotNull(newsletterSubscribers.confirmedAt),
         isNull(newsletterSubscribers.unsubscribedAt)
       )
-    )
-    .all();
+    );
 
   if (subscribers.length === 0) {
     return NextResponse.json({ sent: 0, message: "No active subscribers" });
@@ -34,16 +33,14 @@ export async function GET(req: NextRequest) {
     .select()
     .from(polls)
     .orderBy(desc(polls.publishedDate))
-    .limit(5)
-    .all();
+    .limit(5);
 
   const pollSummaries: PollSummary[] = await Promise.all(
     recentPolls.map(async (poll) => {
       const results = await db
         .select()
         .from(pollResults)
-        .where(eq(pollResults.pollId, poll.id))
-        .all();
+        .where(eq(pollResults.pollId, poll.id));
       const resultsMap: Record<string, number> = {};
       for (const r of results) resultsMap[r.partyId] = r.percentage;
       return { agency: poll.agency, publishedDate: poll.publishedDate, results: resultsMap };

@@ -1,6 +1,6 @@
 /**
  * Jednorazový backfill: pre každého poslanca s nrsrPersonId stiahni 7 typov
- * NRSR aktivít a zapíš do D1.
+ * NRSR aktivit a zapis do databazy.
  *
  * Spustenie: npx tsx scripts/backfill-mp-activities.ts
  */

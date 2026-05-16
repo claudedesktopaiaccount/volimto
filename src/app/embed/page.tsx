@@ -63,7 +63,7 @@ export default function EmbedDocsPage() {
       <section className="mb-10">
         <h2 className="font-serif text-xl font-bold text-ink mb-1">Tmavý motív</h2>
         <p className="text-sm text-text/60 mb-3">
-          Pre tmavé stránky použite <code className="font-mono text-xs bg-surface px-1">data-theme="dark"</code>.
+          Pre tmavé stránky použite <code className="font-mono text-xs bg-surface px-1">data-theme=&quot;dark&quot;</code>.
           Môžete tiež nastaviť výšku grafu pomocou <code className="font-mono text-xs bg-surface px-1">data-height</code>:
         </p>
         <CodeBlock code={SNIPPET_DARK} />

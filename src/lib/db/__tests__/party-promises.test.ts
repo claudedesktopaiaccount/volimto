@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { getPromisesForParty } from "../party-promises";
+import type { Database } from "@/lib/db";
 
 const mockDb = {
   select: vi.fn().mockReturnThis(),
@@ -12,7 +13,7 @@ const mockDb = {
 
 describe("getPromisesForParty", () => {
   it("returns promises for a party", async () => {
-    const result = await getPromisesForParty(mockDb as any, "ps");
+    const result = await getPromisesForParty(mockDb as unknown as Database, "ps");
     expect(Array.isArray(result)).toBe(true);
     expect(result[0]).toHaveProperty("promiseText");
     expect(result[0]).toHaveProperty("category");

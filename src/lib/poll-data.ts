@@ -35,7 +35,7 @@ export async function getLatestPolls(db?: Database): Promise<PollSummary> {
     scrapedPolls = await scrapeWikipediaPolls();
   } catch (error) {
     console.error("Failed to scrape Wikipedia polls:", error);
-    // Try D1 fallback before hardcoded data
+    // Try database fallback before hardcoded data
     if (db) {
       const dbFallback = await getFallbackFromDb(db);
       if (dbFallback) return dbFallback;

@@ -1,25 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { getConsentStatus, setConsent, type ConsentStatus } from "@/lib/consent";
 
 export default function ConsentManager() {
-  const [status, setStatus] = useState<ConsentStatus>(null);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setStatus(getConsentStatus());
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setMounted(true);
-  }, []);
+  const [status, setStatus] = useState<ConsentStatus>(() =>
+    typeof window === "undefined" ? null : getConsentStatus()
+  );
 
   function handleChange(newStatus: "accepted" | "rejected") {
     setConsent(newStatus);
     setStatus(newStatus);
   }
-
-  if (!mounted) return null;
 
   return (
     <div className="border border-divider bg-surface p-4 space-y-3">

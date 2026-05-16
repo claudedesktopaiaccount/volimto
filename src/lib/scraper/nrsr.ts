@@ -1,4 +1,5 @@
 import * as cheerio from "cheerio";
+import type { AnyNode } from "domhandler";
 
 // ─── Types ────────────────────────────────────────────────
 
@@ -689,8 +690,8 @@ function parseEur(raw: string): number | null {
 function parseTabZoznamRows(
   $: cheerio.CheerioAPI,
   tableSelector: string
-): { cells: string[]; cellHtml: string[]; row: cheerio.Cheerio<any> }[] {
-  const rows: { cells: string[]; cellHtml: string[]; row: cheerio.Cheerio<any> }[] = [];
+): { cells: string[]; cellHtml: string[]; row: cheerio.Cheerio<AnyNode> }[] {
+  const rows: { cells: string[]; cellHtml: string[]; row: cheerio.Cheerio<AnyNode> }[] = [];
   $(`${tableSelector} tr`).each((_, tr) => {
     const $tr = $(tr);
     if ($tr.find("th").length > 0) return;

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { beforeEach, describe, it, expect, vi } from "vitest";
 import { checkAndIncrement } from "./rate-limit";
 
 const mockDb = {
@@ -12,6 +12,10 @@ const mockDb = {
   run: vi.fn(),
 };
 
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+
 describe("checkAndIncrement", () => {
   it("allows paid tier without count check", async () => {
     // @ts-expect-error mock
@@ -21,21 +25,21 @@ describe("checkAndIncrement", () => {
   });
 
   it("allows free tier under limit", async () => {
-    mockDb.all.mockResolvedValueOnce([{ count: 50 }]);
+    mockDb.where.mockResolvedValueOnce([{ count: 50 }]);
     // @ts-expect-error mock
     const result = await checkAndIncrement("key-1", "free", mockDb);
     expect(result.allowed).toBe(true);
   });
 
   it("blocks free tier at limit", async () => {
-    mockDb.all.mockResolvedValueOnce([{ count: 100 }]);
+    mockDb.where.mockResolvedValueOnce([{ count: 100 }]);
     // @ts-expect-error mock
     const result = await checkAndIncrement("key-1", "free", mockDb);
     expect(result.allowed).toBe(false);
   });
 
   it("allows free tier with no usage row yet", async () => {
-    mockDb.all.mockResolvedValueOnce([]);
+    mockDb.where.mockResolvedValueOnce([]);
     // @ts-expect-error mock
     const result = await checkAndIncrement("key-1", "free", mockDb);
     expect(result.allowed).toBe(true);

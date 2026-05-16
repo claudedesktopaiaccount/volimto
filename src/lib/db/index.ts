@@ -1,15 +1,18 @@
-import { drizzle } from "drizzle-orm/d1";
+import { neon } from "@neondatabase/serverless";
+import { drizzle } from "drizzle-orm/neon-http";
 import * as schema from "./schema";
-import { createD1Http, D1Http } from "./d1-http";
 
-export function getDb(d1?: D1Http) {
-  const binding = d1 ?? createD1Http();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return drizzle(binding as any, { schema });
-}
+let db: ReturnType<typeof drizzle<typeof schema>> | undefined;
 
-export function getD1(): D1Http {
-  return createD1Http();
+export function getDb() {
+  if (!db) {
+    const databaseUrl = process.env.DATABASE_URL;
+    if (!databaseUrl) {
+      throw new Error("Missing DATABASE_URL for Neon Postgres");
+    }
+    db = drizzle(neon(databaseUrl), { schema });
+  }
+  return db;
 }
 
 export type Database = ReturnType<typeof getDb>;

@@ -1,8 +1,7 @@
 -- Seed Strana vidieka party (Huliak's faction).
--- Run via: wrangler d1 execute volimto-db --remote --file=scripts/seed-strana-vidieka.sql
--- Or paste into Cloudflare D1 console.
+-- Run against Neon Postgres with psql or your SQL client.
 
-INSERT OR IGNORE INTO parties (id, name, abbreviation, color, secondary_color, leader, ideology, seats, logo_url, portrait_url)
+INSERT INTO parties (id, name, abbreviation, color, secondary_color, leader, ideology, seats, logo_url, portrait_url)
 VALUES (
   'vidieka',
   'Strana vidieka',
@@ -14,7 +13,8 @@ VALUES (
   3,
   NULL,
   '/portraits/minister-rudolf-huliak.png'
-);
+)
+ON CONFLICT (id) DO NOTHING;
 
 -- Apply manual overrides immediately so /poslanci picks them up before next cron.
 UPDATE mps SET party_id = 'vidieka' WHERE nrsr_person_id IN ('1150', '1152', '1173');

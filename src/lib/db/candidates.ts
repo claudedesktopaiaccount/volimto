@@ -1,5 +1,5 @@
 import { eq, sql } from "drizzle-orm";
-import type { DrizzleD1Database } from "drizzle-orm/d1";
+import type { Database } from "@/lib/db";
 import { candidates, parties } from "./schema";
 
 export interface CandidateWithParty {
@@ -14,11 +14,8 @@ export interface CandidateWithParty {
   partyName: string;
 }
 
-export async function getCandidates(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  db: DrizzleD1Database<any>
-): Promise<CandidateWithParty[]> {
-  return db
+export async function getCandidates(db: Database): Promise<CandidateWithParty[]> {
+  return await db
     .select({
       id: candidates.id,
       partyId: candidates.partyId,
@@ -32,6 +29,5 @@ export async function getCandidates(
     })
     .from(candidates)
     .innerJoin(parties, eq(candidates.partyId, parties.id))
-    .orderBy(candidates.partyId, candidates.listRank)
-    .all();
+    .orderBy(candidates.partyId, candidates.listRank);
 }

@@ -1,18 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { getConsentStatus, setConsent } from "@/lib/consent";
 
 export default function GdprBanner() {
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    if (getConsentStatus() === null) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setVisible(true);
-    }
-  }, []);
+  const [visible, setVisible] = useState(() =>
+    typeof window !== "undefined" && getConsentStatus() === null
+  );
 
   if (!visible) return null;
 

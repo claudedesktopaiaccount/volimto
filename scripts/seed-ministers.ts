@@ -8,48 +8,17 @@
 import "dotenv/config";
 import * as cheerio from "cheerio";
 import type { Element } from "domhandler";
+import { eq } from "drizzle-orm";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
+import { getDb } from "../src/lib/db";
 import { resolvePartyId } from "../src/lib/db/nrsr";
+import { mps, parties as partiesTable } from "../src/lib/db/schema";
 import { makeSlug } from "../src/lib/scraper/nrsr";
 
 const PORTRAITS_DIR = path.resolve(__dirname, "..", "public", "portraits");
 
-const CF_ACCOUNT = process.env.CLOUDFLARE_ACCOUNT_ID!;
-const CF_DB = process.env.CLOUDFLARE_DATABASE_ID!;
-const CF_TOKEN = process.env.CLOUDFLARE_D1_TOKEN!;
-
-if (!CF_ACCOUNT || !CF_DB || !CF_TOKEN) {
-  console.error("Missing CLOUDFLARE_ACCOUNT_ID / DATABASE_ID / D1_TOKEN env");
-  process.exit(1);
-}
-
-const QUERY_URL = `https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT}/d1/database/${CF_DB}/query`;
 const WIKI_URL = "https://sk.wikipedia.org/wiki/Štvrtá_vláda_Roberta_Fica";
-
-interface D1Result<T> {
-  result: { results: T[] }[];
-  success: boolean;
-  errors: unknown[];
-}
-
-async function d1Query<T = Record<string, unknown>>(
-  sql: string,
-  params: unknown[] = []
-): Promise<T[]> {
-  const res = await fetch(QUERY_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${CF_TOKEN}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ sql, params }),
-  });
-  if (!res.ok) throw new Error(`D1 HTTP ${res.status}: ${await res.text()}`);
-  const json = (await res.json()) as D1Result<T>;
-  if (!json.success) throw new Error(`D1 error: ${JSON.stringify(json.errors)}`);
-  return json.result[0]?.results ?? [];
-}
 
 interface CabinetRow {
   post: string;
@@ -183,6 +152,7 @@ async function fetchPortrait(slug: string, wikiHref: string | null): Promise<str
 }
 
 async function main() {
+  const db = getDb();
   console.log("Fetching cabinet table...");
   const res = await fetch(WIKI_URL, { headers: { "User-Agent": "VolimTo/1.0" } });
   if (!res.ok) throw new Error(`Wikipedia HTTP ${res.status}`);
@@ -192,9 +162,9 @@ async function main() {
   const active = all.filter((r) => r.active);
   console.log(`  ${all.length} rows / ${active.length} active`);
 
-  const parties = await d1Query<{ id: string; abbreviation: string }>(
-    "SELECT id, abbreviation FROM parties"
-  );
+  const parties = await db
+    .select({ id: partiesTable.id, abbreviation: partiesTable.abbreviation })
+    .from(partiesTable);
   const partySlugToId: Record<string, string> = {};
   for (const p of parties) partySlugToId[p.abbreviation.toLowerCase()] = p.id;
 
@@ -217,27 +187,31 @@ async function main() {
 
     // Upsert by slug. Update party_id + role; do not clobber existing
     // nrsr_person_id (some ministers were also MPs).
-    const existing = await d1Query<{ id: number }>(
-      "SELECT id FROM mps WHERE slug = ? LIMIT 1",
-      [slug]
-    );
+    const existing = await db
+      .select({ id: mps.id })
+      .from(mps)
+      .where(eq(mps.slug, slug))
+      .limit(1);
     if (existing.length) {
-      if (photoUrl) {
-        await d1Query(
-          "UPDATE mps SET party_id = ?, role = ?, name_full = ?, name_display = ?, photo_url = ? WHERE slug = ?",
-          [partyId, role, r.name, r.name, photoUrl, slug]
-        );
-      } else {
-        await d1Query(
-          "UPDATE mps SET party_id = ?, role = ?, name_full = ?, name_display = ? WHERE slug = ?",
-          [partyId, role, r.name, r.name, slug]
-        );
-      }
+      await db
+        .update(mps)
+        .set({
+          partyId,
+          role,
+          nameFull: r.name,
+          nameDisplay: r.name,
+          ...(photoUrl ? { photoUrl } : {}),
+        })
+        .where(eq(mps.slug, slug));
     } else {
-      await d1Query(
-        "INSERT INTO mps (slug, name_full, name_display, party_id, role, photo_url) VALUES (?, ?, ?, ?, ?, ?)",
-        [slug, r.name, r.name, partyId, role, photoUrl]
-      );
+      await db.insert(mps).values({
+        slug,
+        nameFull: r.name,
+        nameDisplay: r.name,
+        partyId,
+        role,
+        photoUrl,
+      });
     }
     upserted++;
     console.log(`  ${r.name} · ${role} · ${r.partyLabel} · ${photoUrl ?? "no-photo"}`);

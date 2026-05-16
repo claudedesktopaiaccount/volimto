@@ -27,7 +27,7 @@ export async function subscribeEmail(
     });
   } catch (err) {
     if (err instanceof Error && err.message.includes("UNIQUE constraint failed")) {
-      throw new Error("already_subscribed");
+      throw new Error("already_subscribed", { cause: err });
     }
     throw err;
   }

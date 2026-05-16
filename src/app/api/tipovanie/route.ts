@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
       if (session) userId = session.userId;
     }
 
-    // D1-based rate limiting (persists across isolate restarts)
+    // Database-backed rate limiting (persists across serverless invocations)
     const ip = request.headers.get("cf-connecting-ip") || request.headers.get("x-forwarded-for") || "unknown";
     if (await isRateLimited(db, ip)) {
       return NextResponse.json({ error: "Too many requests" }, { status: 429 });

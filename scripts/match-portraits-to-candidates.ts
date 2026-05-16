@@ -9,7 +9,7 @@
  *   npm run portraits:match -- --dry   # plan only
  *   npm run portraits:match            # apply
  *
- * Env: CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_DATABASE_ID, CLOUDFLARE_D1_TOKEN
+ * Env: DATABASE_URL
  */
 
 import "dotenv/config";

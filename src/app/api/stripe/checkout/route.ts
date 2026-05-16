@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
 
   const siteUrl = "https://volimto.sk";
 
-  // Create Stripe Checkout session via REST (no SDK — Workers compatible)
+  // Create Stripe Checkout session via REST.
   const params = new URLSearchParams({
     "line_items[0][price]": process.env.STRIPE_PRICE_ID!,
     "line_items[0][quantity]": "1",

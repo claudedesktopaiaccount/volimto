@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 interface ShareButtonsProps {
   url: string;
@@ -10,12 +10,9 @@ interface ShareButtonsProps {
 
 export default function ShareButtons({ url, title, description }: ShareButtonsProps) {
   const [copied, setCopied] = useState(false);
-  const [canNativeShare, setCanNativeShare] = useState(false);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setCanNativeShare(typeof navigator !== "undefined" && "share" in navigator);
-  }, []);
+  const [canNativeShare] = useState(() =>
+    typeof navigator !== "undefined" && "share" in navigator
+  );
 
   const encoded = encodeURIComponent(url);
   const encodedTitle = encodeURIComponent(title);

@@ -1,6 +1,6 @@
 /**
  * Thin wrapper around the Resend REST API.
- * Does NOT use the Resend SDK — avoids Node.js dependencies incompatible with Workers.
+ * The REST API is enough for scheduled emails.
  */
 
 interface SendEmailParams {
@@ -23,7 +23,7 @@ export async function sendEmail(params: SendEmailParams, env: Env): Promise<void
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: params.from ?? "VolímTo <newsletter@volimto.sk>",
+      from: params.from ?? "VolimTo <newsletter@volimto.sk>",
       to: params.to,
       subject: params.subject,
       html: params.html,

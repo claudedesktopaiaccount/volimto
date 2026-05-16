@@ -2,6 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 
+const PREDIKCIA_BARS = [
+  { label: "PS", pct: 91, color: "#1daee9" },
+  { label: "SMER", pct: 9, color: "#df2b2b" },
+  { label: "HLAS", pct: 0, color: "#ff2323" },
+  { label: "REP", pct: 0, color: "#244ea8" },
+  { label: "KDH", pct: 0, color: "#224b8c" },
+];
+
 function useInViewOnce<T extends HTMLElement>() {
   const ref = useRef<T | null>(null);
   const [inView, setInView] = useState(false);
@@ -24,17 +32,10 @@ function useInViewOnce<T extends HTMLElement>() {
 }
 
 export function PredikciaMini() {
-  const bars = [
-    { label: "PS", pct: 91, color: "#1daee9" },
-    { label: "SMER", pct: 9, color: "#df2b2b" },
-    { label: "HLAS", pct: 0, color: "#ff2323" },
-    { label: "REP", pct: 0, color: "#244ea8" },
-    { label: "KDH", pct: 0, color: "#224b8c" },
-  ];
   const { ref, inView } = useInViewOnce<HTMLDivElement>();
   const [hovered, setHovered] = useState(false);
   const [runId, setRunId] = useState(0);
-  const [displayed, setDisplayed] = useState(bars.map(() => 0));
+  const [displayed, setDisplayed] = useState(PREDIKCIA_BARS.map(() => 0));
 
   useEffect(() => {
     if (!inView) return;
@@ -46,13 +47,13 @@ export function PredikciaMini() {
       const eased = 1 - Math.pow(1 - t, 3);
       const jitter = t < 0.75 ? (Math.random() - 0.5) * 6 * (1 - t) : 0;
       setDisplayed(
-        bars.map((b) => {
+        PREDIKCIA_BARS.map((b) => {
           const v = b.pct * eased + (b.pct > 0 ? jitter : 0);
           return Math.max(0, Math.min(100, v));
         })
       );
       if (t < 1) raf = requestAnimationFrame(tick);
-      else setDisplayed(bars.map((b) => b.pct));
+      else setDisplayed(PREDIKCIA_BARS.map((b) => b.pct));
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
@@ -64,7 +65,7 @@ export function PredikciaMini() {
       className="flex items-center justify-center p-3"
       onMouseEnter={() => {
         setHovered(true);
-        setDisplayed(bars.map(() => 0));
+        setDisplayed(PREDIKCIA_BARS.map(() => 0));
         setRunId((n) => n + 1);
       }}
       onMouseLeave={() => setHovered(false)}
@@ -74,7 +75,7 @@ export function PredikciaMini() {
           MONTE CARLO · 10 000×
         </div>
         <div className="space-y-2.5">
-          {bars.map((b, i) => {
+          {PREDIKCIA_BARS.map((b, i) => {
             const winner = b.pct >= 50;
             return (
               <div key={b.label} className="flex items-center gap-2">

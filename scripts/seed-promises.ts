@@ -3,12 +3,9 @@
  * Sourced from party manifestos and the 2023 coalition agreement (Smer-SD/SNS/Hlas-SD).
  *
  * Run with: npx tsx scripts/seed-promises.ts
- * Requires env vars: CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_DATABASE_ID, CLOUDFLARE_D1_TOKEN
  */
-
-const accountId = process.env.CLOUDFLARE_ACCOUNT_ID!;
-const databaseId = process.env.CLOUDFLARE_DATABASE_ID!;
-const token = process.env.CLOUDFLARE_D1_TOKEN!;
+import { getDb } from "../src/lib/db";
+import { partyPromises } from "../src/lib/db/schema";
 
 type PromiseStatus = "fulfilled" | "in_progress" | "broken" | "not_started";
 
@@ -68,35 +65,20 @@ const PROMISES: SeedPromise[] = [
   { partyId: "demokrati", promiseText: "Zníženie korupcie — nezávislá prokuratúra", category: "Justícia", isPro: true, status: "not_started", sourceUrl: null },
 ];
 
-async function runSql(sql: string, params: unknown[]) {
-  const res = await fetch(
-    `https://api.cloudflare.com/client/v4/accounts/${accountId}/d1/database/${databaseId}/query`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ sql, params }),
-    }
-  );
-  const json = await res.json() as { success: boolean; errors?: unknown[] };
-  if (!json.success) throw new Error(JSON.stringify(json.errors));
-  return json;
-}
-
 async function main() {
-  let count = 0;
-  for (const p of PROMISES) {
-    await runSql(
-      `INSERT INTO party_promises (party_id, promise_text, category, is_pro, status, source_url)
-       VALUES (?, ?, ?, ?, ?, ?)
-       ON CONFLICT DO NOTHING`,
-      [p.partyId, p.promiseText, p.category, p.isPro ? 1 : 0, p.status, p.sourceUrl]
-    );
-    count++;
-  }
-  console.log(`Seeded ${count} promises.`);
+  const db = getDb();
+  await db.delete(partyPromises);
+  await db.insert(partyPromises).values(
+    PROMISES.map((p) => ({
+      partyId: p.partyId,
+      promiseText: p.promiseText,
+      category: p.category,
+      isPro: p.isPro,
+      status: p.status,
+      sourceUrl: p.sourceUrl,
+    }))
+  );
+  console.log(`Seeded ${PROMISES.length} promises.`);
 }
 
 main().catch((err) => { console.error(err); process.exit(1); });

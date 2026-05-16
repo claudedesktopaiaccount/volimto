@@ -31,8 +31,7 @@ export default async function ApiPristupPage({
         userKeys = await db
           .select()
           .from(apiKeys)
-          .where(eq(apiKeys.userId, session.userId))
-          .all();
+          .where(eq(apiKeys.userId, session.userId));
       }
     }
   } catch {

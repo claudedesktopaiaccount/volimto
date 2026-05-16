@@ -26,14 +26,12 @@ export async function createApiKey(
 
   await db
     .insert(apiKeys)
-    .values({ id, userId, keyHash, tier: "free", createdAt: now })
-    .run();
+    .values({ id, userId, keyHash, tier: "free", createdAt: now });
 
   const [record] = await db
     .select()
     .from(apiKeys)
-    .where(eq(apiKeys.id, id))
-    .all();
+    .where(eq(apiKeys.id, id));
 
   return { rawKey, record };
 }
@@ -49,8 +47,7 @@ export async function lookupApiKey(
   const rows = await db
     .select()
     .from(apiKeys)
-    .where(eq(apiKeys.keyHash, keyHash))
-    .all();
+    .where(eq(apiKeys.keyHash, keyHash));
 
   if (rows.length === 0 || rows[0].revokedAt !== null) return null;
   return rows[0];

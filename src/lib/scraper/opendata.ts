@@ -1,5 +1,5 @@
 // ─── RPVS + OpenData scraper ─────────────────────────────────────────────────
-// Cloudflare Workers compatible — no Node.js fs/path/Buffer APIs.
+// Serverless compatible: no Node.js fs/path/Buffer APIs.
 
 export type Fetcher = (url: string) => Promise<string>;
 

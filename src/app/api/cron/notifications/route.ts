@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
   const optedIn = await db
     .select({ userId: userNotificationPrefs.userId })
     .from(userNotificationPrefs)
-    .where(eq(userNotificationPrefs.onNewPoll, 1));
+    .where(eq(userNotificationPrefs.onNewPoll, true));
 
   let sent = 0;
   const siteUrl = "https://volimto.sk";

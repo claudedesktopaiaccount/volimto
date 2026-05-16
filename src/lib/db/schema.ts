@@ -1,11 +1,11 @@
-import { sqliteTable, text, integer, real, uniqueIndex, index } from "drizzle-orm/sqlite-core";
+import { pgTable, text, integer, doublePrecision, uniqueIndex, index, serial, boolean } from "drizzle-orm/pg-core";
 
-// ─── Rate Limits ────────────────────────────────────────
+// Rate Limits
 
-export const rateLimits = sqliteTable(
+export const rateLimits = pgTable(
   "rate_limits",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: serial("id").primaryKey(),
     ipHash: text("ip_hash").notNull(),
     createdAt: integer("created_at").notNull(),
   },
@@ -15,9 +15,9 @@ export const rateLimits = sqliteTable(
   ]
 );
 
-// ─── Parties ─────────────────────────────────────────────
+// Parties
 
-export const parties = sqliteTable("parties", {
+export const parties = pgTable("parties", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   abbreviation: text("abbreviation").notNull(),
@@ -30,12 +30,12 @@ export const parties = sqliteTable("parties", {
   portraitUrl: text("portrait_url"),
 });
 
-// ─── Polls ───────────────────────────────────────────────
+// Polls
 
-export const polls = sqliteTable(
+export const polls = pgTable(
   "polls",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: serial("id").primaryKey(),
     agency: text("agency").notNull(),
     publishedDate: text("published_date").notNull(),
     fieldworkStart: text("fieldwork_start"),
@@ -49,17 +49,17 @@ export const polls = sqliteTable(
   ]
 );
 
-export const pollResults = sqliteTable(
+export const pollResults = pgTable(
   "poll_results",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: serial("id").primaryKey(),
     pollId: integer("poll_id")
       .notNull()
       .references(() => polls.id),
     partyId: text("party_id")
       .notNull()
       .references(() => parties.id),
-    percentage: real("percentage").notNull(),
+    percentage: doublePrecision("percentage").notNull(),
   },
   (table) => [
     index("poll_results_poll_id_idx").on(table.pollId),
@@ -67,41 +67,41 @@ export const pollResults = sqliteTable(
   ]
 );
 
-// ─── Predictions ─────────────────────────────────────────
+// Predictions
 
-export const predictions = sqliteTable("predictions", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
+export const predictions = pgTable("predictions", {
+  id: serial("id").primaryKey(),
   generatedAt: text("generated_at").notNull(),
   modelVersion: text("model_version").notNull(),
 });
 
-export const predictionResults = sqliteTable(
+export const predictionResults = pgTable(
   "prediction_results",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: serial("id").primaryKey(),
     predictionId: integer("prediction_id")
       .notNull()
       .references(() => predictions.id),
     partyId: text("party_id")
       .notNull()
       .references(() => parties.id),
-    predictedPct: real("predicted_pct").notNull(),
-    lowerBound: real("lower_bound").notNull(),
-    upperBound: real("upper_bound").notNull(),
-    winProbability: real("win_probability").notNull(),
-    parliamentProbability: real("parliament_probability").notNull(),
+    predictedPct: doublePrecision("predicted_pct").notNull(),
+    lowerBound: doublePrecision("lower_bound").notNull(),
+    upperBound: doublePrecision("upper_bound").notNull(),
+    winProbability: doublePrecision("win_probability").notNull(),
+    parliamentProbability: doublePrecision("parliament_probability").notNull(),
   },
   (table) => [
     index("pred_results_prediction_id_idx").on(table.predictionId),
   ]
 );
 
-// ─── News ────────────────────────────────────────────────
+// News
 
-export const newsItems = sqliteTable(
+export const newsItems = pgTable(
   "news_items",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: serial("id").primaryKey(),
     title: text("title").notNull(),
     url: text("url").notNull(),
     source: text("source").notNull(),
@@ -112,18 +112,18 @@ export const newsItems = sqliteTable(
   (table) => [uniqueIndex("news_items_url_unique").on(table.url)]
 );
 
-// ─── Party Promises ──────────────────────────────────────
+// Party Promises
 
-export const partyPromises = sqliteTable(
+export const partyPromises = pgTable(
   "party_promises",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: serial("id").primaryKey(),
     partyId: text("party_id")
       .notNull()
       .references(() => parties.id),
     promiseText: text("promise_text").notNull(),
     category: text("category").notNull(),
-    isPro: integer("is_pro", { mode: "boolean" }).notNull(),
+    isPro: boolean("is_pro").notNull(),
     sourceUrl: text("source_url"),
     status: text("status").notNull().default("not_started"),
     // status values: 'fulfilled' | 'in_progress' | 'broken' | 'not_started'
@@ -131,20 +131,20 @@ export const partyPromises = sqliteTable(
   (table) => [index("party_promises_party_id_idx").on(table.partyId)]
 );
 
-// ─── Coalition Scenarios ─────────────────────────────────
+// Coalition Scenarios
 
-export const coalitionScenarios = sqliteTable("coalition_scenarios", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
+export const coalitionScenarios = pgTable("coalition_scenarios", {
+  id: serial("id").primaryKey(),
   name: text("name").notNull(),
   partyIds: text("party_ids").notNull(), // JSON array
-  combinedProbability: real("combined_probability"),
+  combinedProbability: doublePrecision("combined_probability"),
   predictedSeats: integer("predicted_seats"),
   predictionId: integer("prediction_id").references(() => predictions.id),
 });
 
-// ─── Crowd Predictions (Tipovanie) ───────────────────────
+// Crowd Predictions (Tipovanie)
 
-export const userPredictions = sqliteTable(
+export const userPredictions = pgTable(
   "user_predictions",
   {
     id: text("id").primaryKey(),
@@ -152,7 +152,7 @@ export const userPredictions = sqliteTable(
     partyId: text("party_id")
       .notNull()
       .references(() => parties.id),
-    predictedPct: real("predicted_pct"),
+    predictedPct: doublePrecision("predicted_pct"),
     coalitionPick: text("coalition_pick"), // JSON array
     createdAt: text("created_at").notNull(),
     fingerprint: text("fingerprint"),
@@ -165,15 +165,15 @@ export const userPredictions = sqliteTable(
   ]
 );
 
-export const crowdAggregates = sqliteTable(
+export const crowdAggregates = pgTable(
   "crowd_aggregates",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: serial("id").primaryKey(),
     partyId: text("party_id")
       .notNull()
       .references(() => parties.id),
     totalBets: integer("total_bets").notNull().default(0),
-    avgPredictedPct: real("avg_predicted_pct"),
+    avgPredictedPct: doublePrecision("avg_predicted_pct"),
     computedAt: text("computed_at").notNull(),
   },
   (table) => [
@@ -181,12 +181,12 @@ export const crowdAggregates = sqliteTable(
   ]
 );
 
-// ─── GDPR Audit Log ────────────────────────────────────
+// GDPR Audit Log
 
-export const gdprAuditLog = sqliteTable(
+export const gdprAuditLog = pgTable(
   "gdpr_audit_log",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: serial("id").primaryKey(),
     action: text("action").notNull(), // 'delete' | 'export'
     visitorIdHash: text("visitor_id_hash").notNull(),
     timestamp: text("timestamp").notNull(),
@@ -198,12 +198,12 @@ export const gdprAuditLog = sqliteTable(
   ]
 );
 
-// ─── Newsletter Subscribers ───────────────────────────────
+// Newsletter Subscribers
 
-export const newsletterSubscribers = sqliteTable(
+export const newsletterSubscribers = pgTable(
   "newsletter_subscribers",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: serial("id").primaryKey(),
     email: text("email").notNull(),
     createdAt: text("created_at").notNull(),
     confirmedAt: text("confirmed_at"),
@@ -215,9 +215,9 @@ export const newsletterSubscribers = sqliteTable(
   ]
 );
 
-// ─── Users ──────────────────────────────────────────────
+// Users
 
-export const users = sqliteTable("users", {
+export const users = pgTable("users", {
   id: text("id").primaryKey(), // UUID
   email: text("email").notNull(),
   passwordHash: text("password_hash").notNull(),
@@ -230,9 +230,9 @@ export const users = sqliteTable("users", {
   index("users_visitor_id_idx").on(table.visitorId),
 ]);
 
-// ─── User Sessions ──────────────────────────────────────
+// User Sessions
 
-export const userSessions = sqliteTable("user_sessions", {
+export const userSessions = pgTable("user_sessions", {
   id: text("id").primaryKey(), // SHA-256 hash of session token
   userId: text("user_id").notNull().references(() => users.id),
   createdAt: text("created_at").notNull(),
@@ -242,17 +242,17 @@ export const userSessions = sqliteTable("user_sessions", {
   index("user_sessions_expires_idx").on(table.expiresAt),
 ]);
 
-// ─── Prediction Scores ─────────────────────────────────
+// Prediction Scores
 
-export const predictionScores = sqliteTable("prediction_scores", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
+export const predictionScores = pgTable("prediction_scores", {
+  id: serial("id").primaryKey(),
   userId: text("user_id").references(() => users.id),
   visitorId: text("visitor_id"),
   electionId: text("election_id").notNull(), // e.g., "sr-2027"
-  winnerScore: real("winner_score"),
-  percentageScore: real("percentage_score"),
-  coalitionScore: real("coalition_score"),
-  totalScore: real("total_score").notNull().default(0),
+  winnerScore: doublePrecision("winner_score"),
+  percentageScore: doublePrecision("percentage_score"),
+  coalitionScore: doublePrecision("coalition_score"),
+  totalScore: doublePrecision("total_score").notNull().default(0),
   scoredAt: text("scored_at").notNull(),
 }, (table) => [
   index("pred_scores_user_idx").on(table.userId),
@@ -260,18 +260,18 @@ export const predictionScores = sqliteTable("prediction_scores", {
   index("pred_scores_total_idx").on(table.totalScore),
 ]);
 
-// ─── Kalkulator Weights ──────────────────────────────────
+// Kalkulator Weights
 // Stores per-answer party weights for volebný kalkulátor.
 // questionId: 1-20, answerIndex: 0-2, partyId: e.g. "ps"
 
-export const kalkulatorWeights = sqliteTable(
+export const kalkulatorWeights = pgTable(
   "kalkulator_weights",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: serial("id").primaryKey(),
     questionId: integer("question_id").notNull(),
     answerIndex: integer("answer_index").notNull(),
     partyId: text("party_id").notNull(),
-    weight: real("weight").notNull().default(0),
+    weight: doublePrecision("weight").notNull().default(0),
     sourceUrl: text("source_url"),
     updatedAt: text("updated_at").notNull(),
   },
@@ -281,22 +281,22 @@ export const kalkulatorWeights = sqliteTable(
   ]
 );
 
-// ─── User Notification Prefs ─────────────────────────────
+// User Notification Prefs
 
-export const userNotificationPrefs = sqliteTable("user_notification_prefs", {
+export const userNotificationPrefs = pgTable("user_notification_prefs", {
   userId: text("user_id").primaryKey().references(() => users.id),
-  onNewPoll: integer("on_new_poll").notNull().default(0), // 0 | 1
-  onScoreChange: integer("on_score_change").notNull().default(0),
+  onNewPoll: boolean("on_new_poll").notNull().default(false),
+  onScoreChange: boolean("on_score_change").notNull().default(false),
   updatedAt: text("updated_at").notNull(),
 });
 
-// ─── Notification Log ─────────────────────────────────────
+// Notification Log
 // Tracks sent notifications for rate-limiting (max 1/user/day).
 
-export const notificationLog = sqliteTable(
+export const notificationLog = pgTable(
   "notification_log",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: serial("id").primaryKey(),
     userId: text("user_id").notNull().references(() => users.id),
     type: text("type").notNull(), // 'new_poll' | 'score_change' | 'digest'
     sentAt: text("sent_at").notNull(),
@@ -307,9 +307,9 @@ export const notificationLog = sqliteTable(
   ]
 );
 
-// ─── API Keys ─────────────────────────────────────────────
+// API Keys
 
-export const apiKeys = sqliteTable(
+export const apiKeys = pgTable(
   "api_keys",
   {
     id: text("id").primaryKey(), // UUID
@@ -326,13 +326,13 @@ export const apiKeys = sqliteTable(
   ]
 );
 
-// ─── API Usage ────────────────────────────────────────────
+// API Usage
 // Tracks daily request count per key for free-tier rate limiting.
 
-export const apiUsage = sqliteTable(
+export const apiUsage = pgTable(
   "api_usage",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: serial("id").primaryKey(),
     keyId: text("key_id").notNull().references(() => apiKeys.id),
     date: text("date").notNull(), // YYYY-MM-DD UTC
     count: integer("count").notNull().default(0),
@@ -343,23 +343,23 @@ export const apiUsage = sqliteTable(
   ]
 );
 
-// ─── Prediction Narrative ─────────────────────────────────
+// Prediction Narrative
 // Single-row cache for Claude-generated Slovak narrative.
 // id is always 'current'; upserted on hash change.
 
-export const predictionNarrative = sqliteTable("prediction_narrative", {
+export const predictionNarrative = pgTable("prediction_narrative", {
   id: text("id").primaryKey(), // always 'current'
   inputHash: text("input_hash").notNull(),
   narrative: text("narrative").notNull(),
   generatedAt: integer("generated_at").notNull(), // unix ms
 });
 
-// ─── Candidates (parliamentary candidate lists) ───────────
+// Candidates (parliamentary candidate lists)
 
-export const candidates = sqliteTable(
+export const candidates = pgTable(
   "candidates",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: serial("id").primaryKey(),
     partyId: text("party_id")
       .notNull()
       .references(() => parties.id),
@@ -374,14 +374,14 @@ export const candidates = sqliteTable(
   ]
 );
 
-// ─── Phase 0: Political Intelligence Tables ───────────────
+// Phase 0: Political Intelligence Tables
 
-// ─── MPs — Members of Parliament / politicians ────────────
+// MPs — Members of Parliament / politicians
 
-export const mps = sqliteTable(
+export const mps = pgTable(
   "mps",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: serial("id").primaryKey(),
     slug: text("slug").notNull(),          // e.g. "robert-fico"
     nameFull: text("name_full").notNull(), // "Robert Fico"
     nameDisplay: text("name_display").notNull(), // display name (short)
@@ -402,12 +402,12 @@ export const mps = sqliteTable(
   ]
 );
 
-// ─── Votes — Parliamentary vote sessions ──────────────────
+// Votes — Parliamentary vote sessions
 
-export const votes = sqliteTable(
+export const votes = pgTable(
   "votes",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: serial("id").primaryKey(),
     nrsrVoteId: text("nrsr_vote_id").notNull(), // NRSR internal vote ID
     date: text("date").notNull(),               // ISO date
     titleSk: text("title_sk").notNull(),
@@ -428,12 +428,12 @@ export const votes = sqliteTable(
   ]
 );
 
-// ─── Vote Records — How each MP voted in each vote ────────
+// Vote Records — How each MP voted in each vote
 
-export const voteRecords = sqliteTable(
+export const voteRecords = pgTable(
   "vote_records",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: serial("id").primaryKey(),
     voteId: integer("vote_id").notNull().references(() => votes.id),
     mpId: integer("mp_id").notNull().references(() => mps.id),
     // choice values: 'za' | 'proti' | 'zdržal_sa' | 'neprítomný' | 'nehlasoval'
@@ -446,12 +446,12 @@ export const voteRecords = sqliteTable(
   ]
 );
 
-// ─── Speeches — Parliamentary speeches ───────────────────
+// Speeches — Parliamentary speeches
 
-export const speeches = sqliteTable(
+export const speeches = pgTable(
   "speeches",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: serial("id").primaryKey(),
     mpId: integer("mp_id").notNull().references(() => mps.id),
     date: text("date").notNull(),           // ISO date
     titleSk: text("title_sk"),
@@ -466,12 +466,12 @@ export const speeches = sqliteTable(
   ]
 );
 
-// ─── Promises — Extracted political promises (AI-assisted) ─
+// Promises — Extracted political promises (AI-assisted)
 
-export const promises = sqliteTable(
+export const promises = pgTable(
   "promises",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: serial("id").primaryKey(),
     // sourceType values: 'program' | 'prejav' | 'rozhovor' | 'socialne_siete'
     sourceType: text("source_type").notNull(),
     sourceUrl: text("source_url").notNull(),
@@ -483,7 +483,7 @@ export const promises = sqliteTable(
     status: text("status").notNull().default("nesplnený"),
     evidenceVoteId: integer("evidence_vote_id").references(() => votes.id),
     evidenceUrl: text("evidence_url"),
-    aiConfidence: real("ai_confidence"), // 0.0–1.0
+    aiConfidence: doublePrecision("ai_confidence"), // 0.0–1.0
   },
   (table) => [
     index("promises_party_id_idx").on(table.partyId),
@@ -493,12 +493,12 @@ export const promises = sqliteTable(
   ]
 );
 
-// ─── Scandals — Documented scandals (per politician career) ─
+// Scandals — Documented scandals (per politician career)
 
-export const scandals = sqliteTable(
+export const scandals = pgTable(
   "scandals",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: serial("id").primaryKey(),
     slug: text("slug").notNull(),
     titleSk: text("title_sk").notNull(),
     summarySk: text("summary_sk").notNull(), // 150-300 words, neutral language
@@ -513,7 +513,7 @@ export const scandals = sqliteTable(
     verdictUrl: text("verdict_url"),
     // severity: 1=kontroverzný výrok, 2=trestné oznámenie, 3=právoplatný rozsudok
     severity: integer("severity").notNull().default(1),
-    isEditorialOpinion: integer("is_editorial_opinion", { mode: "boolean" }).notNull().default(true),
+    isEditorialOpinion: boolean("is_editorial_opinion").notNull().default(true),
   },
   (table) => [
     uniqueIndex("scandals_slug_unique").on(table.slug),
@@ -524,12 +524,12 @@ export const scandals = sqliteTable(
   ]
 );
 
-// ─── Scandal Politician Links — Many-to-many: scandal ↔ MP ──
+// Scandal Politician Links — Many-to-many: scandal ↔ MP
 
-export const scandalPoliticianLinks = sqliteTable(
+export const scandalPoliticianLinks = pgTable(
   "scandal_politician_links",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: serial("id").primaryKey(),
     scandalId: integer("scandal_id").notNull().references(() => scandals.id),
     mpId: integer("mp_id").notNull().references(() => mps.id),
     // roleInScandal values: 'hlavný_aktér' | 'spoluobvinený' | 'svedok' | 'podpisovateľ'
@@ -542,17 +542,17 @@ export const scandalPoliticianLinks = sqliteTable(
   ]
 );
 
-// ─── Scandal Sources — Min 2 sources required per scandal ───
+// Scandal Sources — Min 2 sources required per scandal
 
-export const scandalSources = sqliteTable(
+export const scandalSources = pgTable(
   "scandal_sources",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: serial("id").primaryKey(),
     scandalId: integer("scandal_id").notNull().references(() => scandals.id),
     url: text("url").notNull(),
     outletName: text("outlet_name").notNull(),
     publishedDate: text("published_date"), // ISO date
-    isPrimary: integer("is_primary", { mode: "boolean" }).notNull().default(false),
+    isPrimary: boolean("is_primary").notNull().default(false),
     archiveUrl: text("archive_url"),       // wayback machine
   },
   (table) => [
@@ -560,12 +560,12 @@ export const scandalSources = sqliteTable(
   ]
 );
 
-// ─── Companies — Companies from RPVS, FinStat ────────────
+// Companies — Companies from RPVS, FinStat
 
-export const companies = sqliteTable(
+export const companies = pgTable(
   "companies",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: serial("id").primaryKey(),
     ico: text("ico").notNull(),            // Slovak company registration number
     name: text("name").notNull(),
     legalForm: text("legal_form"),         // 's.r.o.' | 'a.s.' | etc.
@@ -581,12 +581,12 @@ export const companies = sqliteTable(
   ]
 );
 
-// ─── Politician Company Links — MP ↔ Company relationships ──
+// Politician Company Links — MP ↔ Company relationships
 
-export const politicianCompanyLinks = sqliteTable(
+export const politicianCompanyLinks = pgTable(
   "politician_company_links",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: serial("id").primaryKey(),
     mpId: integer("mp_id").notNull().references(() => mps.id),
     companyId: integer("company_id").notNull().references(() => companies.id),
     // relationship values: 'štatutár' | 'spoločník' | 'prokurista' | 'beneficiár' | 'akcionár'
@@ -602,16 +602,16 @@ export const politicianCompanyLinks = sqliteTable(
   ]
 );
 
-// ─── Donations — Party donations (from RPPOZ register) ───
+// Donations — Party donations (from RPPOZ register)
 
-export const donations = sqliteTable(
+export const donations = pgTable(
   "donations",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: serial("id").primaryKey(),
     partyId: text("party_id").notNull().references(() => parties.id),
     donorName: text("donor_name").notNull(),
     donorIco: text("donor_ico"),
-    amountEur: real("amount_eur").notNull(),
+    amountEur: doublePrecision("amount_eur").notNull(),
     donationDate: text("donation_date").notNull(), // ISO date
     sourceUrl: text("source_url").notNull(),
   },
@@ -622,12 +622,12 @@ export const donations = sqliteTable(
   ]
 );
 
-// ─── MP Activities (NRSR per-poslanec scraping) ───────────
+// MP Activities (NRSR per-poslanec scraping)
 
-export const mpInterpellations = sqliteTable(
+export const mpInterpellations = pgTable(
   "mp_interpellations",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: serial("id").primaryKey(),
     mpId: integer("mp_id").notNull().references(() => mps.id, { onDelete: "cascade" }),
     date: text("date").notNull(),         // ISO date
     addressee: text("addressee"),         // adresát interpelácie
@@ -643,10 +643,10 @@ export const mpInterpellations = sqliteTable(
   ]
 );
 
-export const mpQuestions = sqliteTable(
+export const mpQuestions = pgTable(
   "mp_questions",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: serial("id").primaryKey(),
     mpId: integer("mp_id").notNull().references(() => mps.id, { onDelete: "cascade" }),
     date: text("date").notNull(),
     subject: text("subject").notNull(),
@@ -660,10 +660,10 @@ export const mpQuestions = sqliteTable(
   ]
 );
 
-export const mpLegislation = sqliteTable(
+export const mpLegislation = pgTable(
   "mp_legislation",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: serial("id").primaryKey(),
     mpId: integer("mp_id").notNull().references(() => mps.id, { onDelete: "cascade" }),
     cisloTlace: text("cislo_tlace"),       // číslo parlamentnej tlače
     title: text("title").notNull(),
@@ -679,10 +679,10 @@ export const mpLegislation = sqliteTable(
   ]
 );
 
-export const mpAmendments = sqliteTable(
+export const mpAmendments = pgTable(
   "mp_amendments",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: serial("id").primaryKey(),
     mpId: integer("mp_id").notNull().references(() => mps.id, { onDelete: "cascade" }),
     toLaw: text("to_law").notNull(),       // k akému zákonu/tlači
     date: text("date").notNull(),
@@ -696,15 +696,15 @@ export const mpAmendments = sqliteTable(
   ]
 );
 
-export const mpForeignTrips = sqliteTable(
+export const mpForeignTrips = pgTable(
   "mp_foreign_trips",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: serial("id").primaryKey(),
     mpId: integer("mp_id").notNull().references(() => mps.id, { onDelete: "cascade" }),
     date: text("date").notNull(),
     country: text("country").notNull(),
     purpose: text("purpose"),
-    costEur: real("cost_eur"),
+    costEur: doublePrecision("cost_eur"),
     sourceUrl: text("source_url"),
     createdAt: text("created_at").notNull(),
   },
@@ -714,10 +714,10 @@ export const mpForeignTrips = sqliteTable(
   ]
 );
 
-export const mpAssistants = sqliteTable(
+export const mpAssistants = pgTable(
   "mp_assistants",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: serial("id").primaryKey(),
     mpId: integer("mp_id").notNull().references(() => mps.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     type: text("type"),                    // 'asistent' | 'odborný' | iné
@@ -729,10 +729,10 @@ export const mpAssistants = sqliteTable(
   ]
 );
 
-export const mpOffices = sqliteTable(
+export const mpOffices = pgTable(
   "mp_offices",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: serial("id").primaryKey(),
     mpId: integer("mp_id").notNull().references(() => mps.id, { onDelete: "cascade" }),
     address: text("address").notNull(),
     city: text("city"),
@@ -743,18 +743,18 @@ export const mpOffices = sqliteTable(
   ]
 );
 
-// ─── Contracts — Public procurement contracts (UVO/EKS/CRZ) ─
+// Contracts — Public procurement contracts (UVO/EKS/CRZ)
 
-export const contracts = sqliteTable(
+export const contracts = pgTable(
   "contracts",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: serial("id").primaryKey(),
     contractNumber: text("contract_number"), // nullable; uniqueness enforced in app logic when non-null
     titleSk: text("title_sk").notNull(),
     contractingAuthority: text("contracting_authority").notNull(),
     supplierIco: text("supplier_ico").notNull(),
     supplierName: text("supplier_name").notNull(),
-    amountEur: real("amount_eur").notNull(),
+    amountEur: doublePrecision("amount_eur").notNull(),
     signedDate: text("signed_date").notNull(),  // ISO date
     cpvCode: text("cpv_code"),
     sourceUrl: text("source_url").notNull(),

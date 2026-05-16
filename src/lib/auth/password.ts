@@ -1,6 +1,6 @@
 /**
  * PBKDF2 password hashing using Web Crypto API.
- * Compatible with Cloudflare Workers (no Node.js crypto module).
+ * Compatible with serverless runtimes (no Node.js crypto module).
  */
 
 const ITERATIONS = 100_000;

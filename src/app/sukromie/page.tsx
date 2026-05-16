@@ -86,7 +86,7 @@ export default function SukromiePage() {
         <section className="border-t border-divider pt-6">
           <h2 className="font-serif text-xl font-bold text-ink mb-3">Tretie strany</h2>
           <p className="text-sm">
-            Stránka je hostovaná na Cloudflare Pages. Nepoužívame žiadne analytické nástroje tretích strán
+            Stránka je hostovaná na Vercel. Nepoužívame žiadne analytické nástroje tretích strán
             ani reklamné siete. Údaje nezdieľame so žiadnymi tretími stranami.
           </p>
         </section>

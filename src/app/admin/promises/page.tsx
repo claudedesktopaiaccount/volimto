@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { PARTY_LIST } from "@/lib/parties";
 
-interface Promise { id: number; partyId: string; promiseText: string; category: string; isPro: boolean; sourceUrl: string | null }
+interface PartyPromise { id: number; partyId: string; promiseText: string; category: string; isPro: boolean; sourceUrl: string | null }
 interface PreviewRow { text: string; category: string; isPro: boolean }
 
 const CATEGORIES = [
@@ -13,7 +13,7 @@ const CATEGORIES = [
 ];
 
 export default function AdminPromises() {
-  const [promises, setPromises] = useState<Promise[]>([]);
+  const [promises, setPromises] = useState<PartyPromise[]>([]);
   const [form, setForm] = useState({ partyId: "ps", promiseText: "", category: "", isPro: true, sourceUrl: "" });
 
   // Import state
@@ -26,12 +26,19 @@ export default function AdminPromises() {
   const [preview, setPreview] = useState<PreviewRow[]>([]);
   const [saving, setSaving] = useState(false);
 
-  async function load() {
+  async function fetchPromises() {
     const res = await fetch("/api/admin/promises");
-    if (res.ok) setPromises(await res.json());
+    if (!res.ok) return [];
+    return await res.json() as PartyPromise[];
   }
 
-  useEffect(() => { load(); }, []);
+  async function load() {
+    setPromises(await fetchPromises());
+  }
+
+  useEffect(() => {
+    fetchPromises().then(setPromises);
+  }, []);
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();

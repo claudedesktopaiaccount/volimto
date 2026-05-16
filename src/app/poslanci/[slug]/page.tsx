@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { getDb } from "@/lib/db";
 import {
   getMpBySlug,
@@ -109,7 +110,7 @@ export default async function MpDetailPage({
     <div className="max-w-content mx-auto px-4 sm:px-6 py-8">
       {/* Breadcrumb */}
       <p className="text-xs text-muted font-mono mb-4">
-        <a href="/poslanci" className="hover:underline">Poslanci</a>
+        <Link href="/poslanci" className="hover:underline">Poslanci</Link>
         {" / "}
         <span className="text-ink">{mp.nameDisplay}</span>
       </p>

@@ -1,5 +1,5 @@
 // Seed script for party promises
-// Run manually after connecting to D1
+// Run manually after connecting to Neon Postgres
 
 interface PromiseSeed {
   partyId: string;

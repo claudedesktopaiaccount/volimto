@@ -5,7 +5,7 @@ interface SentryEnv {
 }
 
 /**
- * Create a Toucan (Sentry) instance for Cloudflare Workers.
+ * Create a Toucan (Sentry) instance for route handlers.
  * Returns null if SENTRY_DSN is not configured.
  */
 export function createSentry(request: Request, env: SentryEnv): Toucan | null {

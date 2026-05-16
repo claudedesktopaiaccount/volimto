@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getD1 } from "@/lib/db";
+import { getDb } from "@/lib/db";
+import { pollResults, polls } from "@/lib/db/schema";
 import { isAdminAuthed } from "@/lib/admin-auth";
 
 export async function POST(req: NextRequest) {
@@ -15,23 +16,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "missing_fields" }, { status: 400 });
   }
 
-  const d1 = getD1();
+  const db = getDb();
   const now = new Date().toISOString();
 
-  const insertResult = await d1
-    .prepare("INSERT INTO polls (agency, published_date, created_at) VALUES (?, ?, ?)")
-    .bind(body.agency, body.publishedDate, now)
-    .run();
+  const [insertedPoll] = await db
+    .insert(polls)
+    .values({ agency: body.agency, publishedDate: body.publishedDate, createdAt: now })
+    .returning({ id: polls.id });
 
-  const pollId = insertResult.meta.last_row_id;
+  const pollId = insertedPoll.id;
+  const resultRows = Object.entries(body.results)
+    .filter(([, pct]) => typeof pct === "number" && pct > 0)
+    .map(([partyId, pct]) => ({ pollId, partyId, percentage: pct }));
 
-  for (const [partyId, pct] of Object.entries(body.results)) {
-    if (typeof pct === "number" && pct > 0) {
-      await d1
-        .prepare("INSERT INTO poll_results (poll_id, party_id, percentage) VALUES (?, ?, ?)")
-        .bind(pollId, partyId, pct)
-        .run();
-    }
+  if (resultRows.length > 0) {
+    await db.insert(pollResults).values(resultRows);
   }
 
   return NextResponse.json({ ok: true, pollId });

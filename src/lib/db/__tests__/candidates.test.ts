@@ -27,16 +27,19 @@ const mockRows: CandidateWithParty[] = [
   },
 ];
 
+let rows = mockRows;
 const mockDb = {
   select: vi.fn().mockReturnThis(),
   from: vi.fn().mockReturnThis(),
   innerJoin: vi.fn().mockReturnThis(),
-  orderBy: vi.fn().mockReturnThis(),
-  all: vi.fn().mockResolvedValue(mockRows),
+  orderBy: vi.fn(() => Promise.resolve(rows)),
 } as unknown as Parameters<typeof getCandidates>[0];
 
 describe("getCandidates", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    rows = mockRows;
+    vi.clearAllMocks();
+  });
 
   it("returns candidates joined with party data, ordered by party then rank", async () => {
     const result = await getCandidates(mockDb);
@@ -47,7 +50,7 @@ describe("getCandidates", () => {
   });
 
   it("returns empty array when no candidates", async () => {
-    mockDb.all = vi.fn().mockResolvedValue([]) as typeof mockDb.all;
+    rows = [];
     const result = await getCandidates(mockDb);
     expect(result).toEqual([]);
   });

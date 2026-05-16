@@ -11,17 +11,10 @@
  * Usage: npx tsx scripts/backfill-mp-birth-years.ts [--dry-run] [--limit=N]
  */
 import "dotenv/config";
+import { and, eq, isNull } from "drizzle-orm";
+import { getDb } from "../src/lib/db";
+import { mps as mpsTable } from "../src/lib/db/schema";
 
-const CF_ACCOUNT = process.env.CLOUDFLARE_ACCOUNT_ID!;
-const CF_DB = process.env.CLOUDFLARE_DATABASE_ID!;
-const CF_TOKEN = process.env.CLOUDFLARE_D1_TOKEN!;
-
-if (!CF_ACCOUNT || !CF_DB || !CF_TOKEN) {
-  console.error("Missing CLOUDFLARE_ACCOUNT_ID / DATABASE_ID / D1_TOKEN env");
-  process.exit(1);
-}
-
-const QUERY_URL = `https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT}/d1/database/${CF_DB}/query`;
 const WIKI_API = "https://sk.wikipedia.org/w/api.php";
 const UA = "VolimTo/1.0 (https://volimto.sk; michal.tar@gmail.com)";
 
@@ -35,30 +28,6 @@ const LIMIT = (() => {
 const CURRENT_YEAR = new Date().getFullYear();
 const MIN_YEAR = 1920;
 const MAX_YEAR = CURRENT_YEAR - 18;
-
-interface D1Result<T> {
-  result: { results: T[] }[];
-  success: boolean;
-  errors: unknown[];
-}
-
-async function d1Query<T = Record<string, unknown>>(
-  sql: string,
-  params: unknown[] = []
-): Promise<T[]> {
-  const res = await fetch(QUERY_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${CF_TOKEN}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ sql, params }),
-  });
-  if (!res.ok) throw new Error(`D1 HTTP ${res.status}: ${await res.text()}`);
-  const json = (await res.json()) as D1Result<T>;
-  if (!json.success) throw new Error(`D1 error: ${JSON.stringify(json.errors)}`);
-  return json.result[0]?.results ?? [];
-}
 
 interface WikiSearchResp {
   query?: { search?: { title: string }[] };
@@ -190,15 +159,19 @@ function extractYear(wikitext: string): number | null {
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function main() {
+  const db = getDb();
+
   console.log("Loading MPs without birth_year...");
-  const mps = await d1Query<{
-    slug: string;
-    name_full: string;
-    name_display: string;
-    nrsr_person_id: string | null;
-  }>(
-    "SELECT slug, name_full, name_display, nrsr_person_id FROM mps WHERE birth_year IS NULL ORDER BY name_full"
-  );
+  const mps = await db
+    .select({
+      slug: mpsTable.slug,
+      nameFull: mpsTable.nameFull,
+      nameDisplay: mpsTable.nameDisplay,
+      nrsrPersonId: mpsTable.nrsrPersonId,
+    })
+    .from(mpsTable)
+    .where(isNull(mpsTable.birthYear))
+    .orderBy(mpsTable.nameFull);
   console.log(`  ${mps.length} MPs to process${LIMIT < Infinity ? ` (limit ${LIMIT})` : ""}`);
 
   const updates: { slug: string; year: number; name: string; title: string }[] = [];
@@ -207,15 +180,15 @@ async function main() {
   const list = mps.slice(0, LIMIT);
   for (let i = 0; i < list.length; i++) {
     const mp = list[i];
-    const rawName = mp.name_full || mp.name_display;
+    const rawName = mp.nameFull || mp.nameDisplay;
     const name = normalizeName(rawName);
     const surname = lastName(rawName);
     try {
       let year: number | null = null;
       let title = "";
-      if (mp.nrsr_person_id) {
-        year = await nrsrBirthYear(mp.nrsr_person_id);
-        title = `nrsr:${mp.nrsr_person_id}`;
+      if (mp.nrsrPersonId) {
+        year = await nrsrBirthYear(mp.nrsrPersonId);
+        title = `nrsr:${mp.nrsrPersonId}`;
       }
       if (!year) {
         const wt = await wikiSearch(name, surname);
@@ -233,7 +206,7 @@ async function main() {
         failed.push({
           slug: mp.slug,
           name,
-          reason: mp.nrsr_person_id ? "no birth date on NRSR page" : "no nrsr_person_id, wiki miss",
+          reason: mp.nrsrPersonId ? "no birth date on NRSR page" : "no nrsr_person_id, wiki miss",
         });
       }
     } catch (err) {
@@ -265,10 +238,10 @@ async function main() {
   console.log(`\nApplying ${updates.length} UPDATEs...`);
   let written = 0;
   for (const u of updates) {
-    await d1Query("UPDATE mps SET birth_year = ? WHERE slug = ? AND birth_year IS NULL", [
-      u.year,
-      u.slug,
-    ]);
+    await db
+      .update(mpsTable)
+      .set({ birthYear: u.year })
+      .where(and(eq(mpsTable.slug, u.slug), isNull(mpsTable.birthYear)));
     written++;
     if (written % 25 === 0) console.log(`  ${written}/${updates.length}`);
   }

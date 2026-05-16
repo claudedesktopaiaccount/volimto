@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 
 // ─── Unit tests for the public polls API ─────────────────────────────────────
-// We test the parameter validation logic and response shape without hitting D1.
+// We test the parameter validation logic and response shape without hitting the database.
 
 function parseLimit(raw: string | null, defaultVal = 10, max = 50): number {
   const parsed = parseInt(raw ?? String(defaultVal), 10);

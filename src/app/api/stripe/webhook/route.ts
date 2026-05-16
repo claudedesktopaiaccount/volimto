@@ -58,8 +58,7 @@ export async function POST(req: NextRequest) {
       const keys = await db
         .select()
         .from(apiKeys)
-        .where(eq(apiKeys.userId, userId))
-        .all();
+        .where(eq(apiKeys.userId, userId));
       const active = keys.filter((k) => !k.revokedAt).sort(
         (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
@@ -67,8 +66,7 @@ export async function POST(req: NextRequest) {
         await db
           .update(apiKeys)
           .set({ tier: "paid", stripeSubscriptionId: subscriptionId })
-          .where(eq(apiKeys.id, active[0].id))
-          .run();
+          .where(eq(apiKeys.id, active[0].id));
       }
     }
   }
@@ -79,8 +77,7 @@ export async function POST(req: NextRequest) {
     await db
       .update(apiKeys)
       .set({ tier: "free" })
-      .where(eq(apiKeys.stripeSubscriptionId, subscriptionId))
-      .run();
+      .where(eq(apiKeys.stripeSubscriptionId, subscriptionId));
   }
 
   return new NextResponse("ok", { status: 200 });

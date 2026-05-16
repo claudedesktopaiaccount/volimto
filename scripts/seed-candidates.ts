@@ -1,8 +1,9 @@
 /**
  * One-time seed: populate candidates table from known party lists.
  * Run: npx tsx scripts/seed-candidates.ts
- * Requires: CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_DATABASE_ID, CLOUDFLARE_D1_TOKEN in env.
  */
+import { getDb } from "../src/lib/db";
+import { candidates } from "../src/lib/db/schema";
 
 const CANDIDATES: Array<{
   partyId: string;
@@ -77,52 +78,25 @@ const CANDIDATES: Array<{
 ];
 
 async function seed() {
-  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
-  const databaseId = process.env.CLOUDFLARE_DATABASE_ID;
-  const token = process.env.CLOUDFLARE_D1_TOKEN;
+  const db = getDb();
 
-  if (!accountId || !databaseId || !token) {
-    throw new Error("Missing CLOUDFLARE_ACCOUNT_ID / CLOUDFLARE_DATABASE_ID / CLOUDFLARE_D1_TOKEN");
-  }
+  await db.delete(candidates);
 
-  const base = `https://api.cloudflare.com/client/v4/accounts/${accountId}/d1/database/${databaseId}`;
-  const headers = {
-    Authorization: `Bearer ${token}`,
-    "Content-Type": "application/json",
-  };
-
-  // Clear existing
-  await fetch(`${base}/query`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({ sql: "DELETE FROM candidates" }),
-  });
-
-  // Insert all — batch into groups of 20
   const chunkSize = 20;
   for (let i = 0; i < CANDIDATES.length; i += chunkSize) {
-    const chunk = CANDIDATES.slice(i, i + chunkSize);
-    const placeholders = chunk
-      .map(() => "(?, ?, ?, ?, ?)")
-      .join(", ");
-    const params = chunk.flatMap((c) => [
-      c.partyId, c.name, c.listRank, c.role ?? null, c.portraitUrl ?? null,
-    ]);
-    const sql = `INSERT INTO candidates (party_id, name, list_rank, role, portrait_url) VALUES ${placeholders}`;
-    const res = await fetch(`${base}/query`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ sql, params }),
-    });
-    const data = await res.json() as { success: boolean; errors?: unknown[] };
-    if (!data.success) {
-      console.error("Insert failed:", data.errors);
-      process.exit(1);
-    }
-    console.log(`Inserted candidates ${i + 1}–${Math.min(i + chunkSize, CANDIDATES.length)}`);
+    const chunk = CANDIDATES.slice(i, i + chunkSize).map((candidate) => ({
+      partyId: candidate.partyId,
+      name: candidate.name,
+      listRank: candidate.listRank,
+      role: candidate.role,
+      portraitUrl: candidate.portraitUrl,
+    }));
+
+    await db.insert(candidates).values(chunk);
+    console.log(`Inserted candidates ${i + 1}-${Math.min(i + chunkSize, CANDIDATES.length)}`);
   }
 
-  console.log(`✓ Seeded ${CANDIDATES.length} candidates`);
+  console.log(`Seeded ${CANDIDATES.length} candidates`);
 }
 
 seed().catch((err) => { console.error(err); process.exit(1); });

@@ -5,45 +5,14 @@
  * Usage: npx tsx scripts/backfill-mp-parties.ts
  */
 import "dotenv/config";
+import { eq, isNotNull } from "drizzle-orm";
+import { getDb } from "../src/lib/db";
 import { MANUAL_PARTY_OVERRIDES, resolvePartyId } from "../src/lib/db/nrsr";
+import { mps, parties as partiesTable } from "../src/lib/db/schema";
 
-const CF_ACCOUNT = process.env.CLOUDFLARE_ACCOUNT_ID!;
-const CF_DB = process.env.CLOUDFLARE_DATABASE_ID!;
-const CF_TOKEN = process.env.CLOUDFLARE_D1_TOKEN!;
-
-if (!CF_ACCOUNT || !CF_DB || !CF_TOKEN) {
-  console.error("Missing CLOUDFLARE_ACCOUNT_ID / DATABASE_ID / D1_TOKEN env");
-  process.exit(1);
-}
-
-const QUERY_URL = `https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT}/d1/database/${CF_DB}/query`;
 const NRSR_BASE = "https://www.nrsr.sk";
 const UA = "Mozilla/5.0 (compatible; VolimTo/1.0; +https://volimto.sk)";
 const TERM = 9; // CisObdobia
-
-interface D1Result<T> {
-  result: { results: T[] }[];
-  success: boolean;
-  errors: unknown[];
-}
-
-async function d1Query<T = Record<string, unknown>>(
-  sql: string,
-  params: unknown[] = []
-): Promise<T[]> {
-  const res = await fetch(QUERY_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${CF_TOKEN}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ sql, params }),
-  });
-  if (!res.ok) throw new Error(`D1 HTTP ${res.status}: ${await res.text()}`);
-  const json = (await res.json()) as D1Result<T>;
-  if (!json.success) throw new Error(`D1 error: ${JSON.stringify(json.errors)}`);
-  return json.result[0]?.results ?? [];
-}
 
 function decodeEntities(s: string): string {
   return s
@@ -86,18 +55,21 @@ async function fetchHtml(url: string): Promise<string> {
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function main() {
+  const db = getDb();
+
   console.log("Loading parties...");
-  const parties = await d1Query<{ id: string; abbreviation: string }>(
-    "SELECT id, abbreviation FROM parties"
-  );
+  const parties = await db
+    .select({ id: partiesTable.id, abbreviation: partiesTable.abbreviation })
+    .from(partiesTable);
   const partySlugToId: Record<string, string> = {};
   for (const p of parties) partySlugToId[p.abbreviation.toLowerCase()] = p.id;
   console.log(`  ${parties.length} parties: ${Object.keys(partySlugToId).join(", ")}`);
 
   console.log("Loading MPs...");
-  const dbMps = await d1Query<{ id: number; slug: string; nrsr_person_id: string }>(
-    "SELECT id, slug, nrsr_person_id FROM mps WHERE nrsr_person_id IS NOT NULL"
-  );
+  const dbMps = await db
+    .select({ id: mps.id, slug: mps.slug, nrsrPersonId: mps.nrsrPersonId })
+    .from(mps)
+    .where(isNotNull(mps.nrsrPersonId));
   console.log(`  ${dbMps.length} MPs to process`);
 
   let matched = 0;
@@ -108,8 +80,9 @@ async function main() {
 
   for (let i = 0; i < dbMps.length; i++) {
     const mp = dbMps[i];
+    const nrsrPersonId = mp.nrsrPersonId!;
     // Manual override takes precedence — skip NRSR fetch
-    const override = MANUAL_PARTY_OVERRIDES[mp.nrsr_person_id];
+    const override = MANUAL_PARTY_OVERRIDES[nrsrPersonId];
     if (override) {
       matched++;
       perParty[override] = (perParty[override] ?? 0) + 1;
@@ -117,7 +90,7 @@ async function main() {
       continue;
     }
 
-    const url = `${NRSR_BASE}/web/Default.aspx?sid=poslanci/poslanec&PoslanecID=${mp.nrsr_person_id}&CisObdobia=${TERM}`;
+    const url = `${NRSR_BASE}/web/Default.aspx?sid=poslanci/poslanec&PoslanecID=${nrsrPersonId}&CisObdobia=${TERM}`;
     try {
       const html = await fetchHtml(url);
       // Detect nezaradený explicitly: no Klub line means independent
@@ -159,7 +132,7 @@ async function main() {
   console.log(`\nApplying ${updates.length} UPDATEs...`);
   let written = 0;
   for (const u of updates) {
-    await d1Query("UPDATE mps SET party_id = ? WHERE slug = ?", [u.partyId ?? null, u.slug]);
+    await db.update(mps).set({ partyId: u.partyId }).where(eq(mps.slug, u.slug));
     written++;
     if (written % 25 === 0) console.log(`  ${written}/${updates.length}`);
   }

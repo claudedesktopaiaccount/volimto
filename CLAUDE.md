@@ -16,8 +16,8 @@ User says "continue with HANDOFF.md" or similar → read `HANDOFF.md` at project
 - **Styling**: TailwindCSS 4
 - **Charts**: Recharts 3
 - **Scraping**: Cheerio (news aggregation)
-- **Database**: Cloudflare D1 (SQLite) via Drizzle ORM
-- **Deployment**: Cloudflare Workers via OpenNextJS adapter
+- **Database**: Neon Postgres via Drizzle ORM
+- **Deployment**: Vercel
 - **Testing**: Vitest 4 + @vitest/coverage-v8
 - **Linting**: ESLint 9
 
@@ -26,12 +26,11 @@ User says "continue with HANDOFF.md" or similar → read `HANDOFF.md` at project
 ```bash
 npm run dev          # Local Next.js dev server
 npm run build        # Next.js production build
-npm run build:cf     # Cloudflare Workers build (via OpenNextJS)
-npm run deploy       # Build + deploy to Cloudflare Workers
-npm run preview      # Local Wrangler preview (Workers runtime)
+npm run deploy       # Deploy to Vercel production
+npm run preview      # Vercel preview
 npm run db:generate  # Generate Drizzle migrations
 npm run db:migrate   # Apply Drizzle migrations
-npm run db:push      # Push schema directly to D1
+npm run db:push      # Push schema directly to Neon (dev only)
 npm run lint         # ESLint
 npm test             # Vitest (single run)
 npm run test:watch   # Vitest watch mode
@@ -56,13 +55,13 @@ src/
 │   └── db/schema.ts        # Drizzle ORM schema (all tables)
 drizzle/                    # Migration files
 public/portraits/           # Party leader WebP portraits
-wrangler.jsonc              # Cloudflare Workers config (D1 binding: DB)
+vercel.json                 # Vercel cron configuration
 drizzle.config.ts           # Drizzle Kit config (d1-http driver)
 ```
 
 ## Database
 
-- **Binding**: `DB` (Cloudflare D1)
+- **Connection**: `DATABASE_URL` (Neon Postgres)
 - **Schema**: `src/lib/db/schema.ts`
 - **Tables**: parties, polls, poll_results, predictions, prediction_results, news_items, party_promises, coalition_scenarios, user_predictions, crowd_aggregates, rate_limits
 - **Migrations**: `drizzle/` directory
@@ -70,16 +69,14 @@ drizzle.config.ts           # Drizzle Kit config (d1-http driver)
 ## Environment Variables
 
 See `.env.example`:
-- `CLOUDFLARE_ACCOUNT_ID` — Cloudflare account
-- `CLOUDFLARE_DATABASE_ID` — D1 database ID
-- `CLOUDFLARE_D1_TOKEN` — API token for D1 access
+- `DATABASE_URL` � Neon Postgres connection string
 
 ## Conventions
 
 - UI language **Slovak** — all user-facing text in Slovak
 - App Router patterns — server components default, `"use client"` only when needed
 - Political data domain — parties, polls, predictions, coalitions
-- D1 via Drizzle ORM, type-safe queries
+- Neon Postgres via Drizzle ORM, type-safe queries
 
 ## Context7 — ALWAYS Use for Documentation
 
@@ -88,9 +85,8 @@ Before writing/modifying code using any library below, ALWAYS use context7 MCP (
 **Libraries requiring context7 lookup:**
 - **Next.js 16** (App Router) — routing, server components, metadata, caching
 - **React 19** — hooks, server actions, use() API
-- **Drizzle ORM** — queries, schema, migrations, D1 adapter
+- **Drizzle ORM** — queries, schema, migrations, Postgres adapter
 - **Recharts 3** — chart components, data format, customization
-- **Cloudflare Workers / D1** — bindings, runtime APIs, wrangler config
 - **TailwindCSS 4** — utility classes, config, new v4 syntax
 - **Cheerio** — selectors, parsing, extraction
 
@@ -103,7 +99,7 @@ Haven't looked up docs this session → stop, use context7 first.
 - **PreToolUse**: Block direct edits to `.env*` files and `package-lock.json`
 
 ### Skills
-- `/deploy` — Build and deploy to Cloudflare Workers
+- `/deploy` � Deploy to Vercel
 - `/db-migrate` — Generate and apply Drizzle database migrations
 - `/caveman` — ALWAYS invoke at session start to activate caveman compression mode (saves tokens)
 

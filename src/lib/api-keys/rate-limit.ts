@@ -21,8 +21,7 @@ export async function checkAndIncrement(
   const rows = await db
     .select({ count: apiUsage.count })
     .from(apiUsage)
-    .where(and(eq(apiUsage.keyId, keyId), eq(apiUsage.date, date)))
-    .all();
+    .where(and(eq(apiUsage.keyId, keyId), eq(apiUsage.date, date)));
 
   const current = rows[0]?.count ?? 0;
   if (current >= FREE_TIER_DAILY_LIMIT) {
@@ -36,8 +35,7 @@ export async function checkAndIncrement(
     .onConflictDoUpdate({
       target: [apiUsage.keyId, apiUsage.date],
       set: { count: current + 1 },
-    })
-    .run();
+    });
 
   return { allowed: true, remaining: FREE_TIER_DAILY_LIMIT - current - 1 };
 }

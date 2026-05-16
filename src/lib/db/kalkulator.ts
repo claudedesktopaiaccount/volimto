@@ -6,7 +6,7 @@ export type KalkulatorWeightRow = typeof kalkulatorWeights.$inferSelect;
 export async function getKalkulatorWeights(
   db: Database
 ): Promise<KalkulatorWeightRow[]> {
-  return db.select().from(kalkulatorWeights).all();
+  return db.select().from(kalkulatorWeights);
 }
 
 export async function upsertKalkulatorWeight(
@@ -30,6 +30,5 @@ export async function upsertKalkulatorWeight(
         kalkulatorWeights.partyId,
       ],
       set: { weight: row.weight, sourceUrl: row.sourceUrl, updatedAt: now },
-    })
-    .run();
+    });
 }

@@ -18,7 +18,7 @@ beforeEach(() => {
 
 describe("getKalkulatorWeights", () => {
   it("returns all weight rows", async () => {
-    mockDb.all.mockResolvedValueOnce([
+    mockDb.from.mockResolvedValueOnce([
       { questionId: 1, answerIndex: 0, partyId: "ps", weight: 2, sourceUrl: null, updatedAt: "2026-01-01" },
     ]);
     // @ts-expect-error mock db

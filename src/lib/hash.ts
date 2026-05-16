@@ -1,6 +1,6 @@
 /**
  * SHA-256 hash a string and return its hex representation.
- * Works in both Cloudflare Workers and browser environments.
+ * Works in both serverless and browser environments.
  */
 export async function hashString(input: string): Promise<string> {
   const encoder = new TextEncoder();

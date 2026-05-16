@@ -30,8 +30,7 @@ export async function GET(req: NextRequest) {
   await db
     .update(newsletterSubscribers)
     .set({ unsubscribedAt: new Date().toISOString() })
-    .where(eq(newsletterSubscribers.email, email.toLowerCase()))
-    .run();
+    .where(eq(newsletterSubscribers.email, email.toLowerCase()));
 
   return new NextResponse(
     `<!DOCTYPE html><html lang="sk"><body style="font-family:Georgia,serif;padding:40px;max-width:600px;margin:auto">
