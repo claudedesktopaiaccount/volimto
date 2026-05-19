@@ -1,14 +1,17 @@
- "use client";
+"use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
-const PREDIKCIA_BARS = [
-  { label: "PS", pct: 91, color: "#1daee9" },
-  { label: "SMER", pct: 9, color: "#df2b2b" },
-  { label: "HLAS", pct: 0, color: "#ff2323" },
-  { label: "REP", pct: 0, color: "#244ea8" },
-  { label: "KDH", pct: 0, color: "#224b8c" },
-];
+export type MiniPartyBar = {
+  label: string;
+  pct: number;
+  color: string;
+};
+
+export type MiniSeatSlice = {
+  color: string;
+  seats: number;
+};
 
 function useInViewOnce<T extends HTMLElement>() {
   const ref = useRef<T | null>(null);
@@ -31,14 +34,14 @@ function useInViewOnce<T extends HTMLElement>() {
   return { ref, inView };
 }
 
-export function PredikciaMini() {
+export function PredikciaMini({ bars, pollCount }: { bars: MiniPartyBar[]; pollCount: number }) {
   const { ref, inView } = useInViewOnce<HTMLDivElement>();
   const [hovered, setHovered] = useState(false);
   const [runId, setRunId] = useState(0);
-  const [displayed, setDisplayed] = useState(PREDIKCIA_BARS.map(() => 0));
+  const [displayed, setDisplayed] = useState(() => bars.map(() => 0));
 
   useEffect(() => {
-    if (!inView) return;
+    if (!inView || bars.length === 0) return;
     const start = performance.now();
     const duration = 1600;
     let raf = 0;
@@ -47,17 +50,17 @@ export function PredikciaMini() {
       const eased = 1 - Math.pow(1 - t, 3);
       const jitter = t < 0.75 ? (Math.random() - 0.5) * 6 * (1 - t) : 0;
       setDisplayed(
-        PREDIKCIA_BARS.map((b) => {
+        bars.map((b) => {
           const v = b.pct * eased + (b.pct > 0 ? jitter : 0);
           return Math.max(0, Math.min(100, v));
         })
       );
       if (t < 1) raf = requestAnimationFrame(tick);
-      else setDisplayed(PREDIKCIA_BARS.map((b) => b.pct));
+      else setDisplayed(bars.map((b) => b.pct));
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [inView, runId]);
+  }, [bars, inView, runId]);
 
   return (
     <div
@@ -65,91 +68,90 @@ export function PredikciaMini() {
       className="flex items-center justify-center p-3"
       onMouseEnter={() => {
         setHovered(true);
-        setDisplayed(PREDIKCIA_BARS.map(() => 0));
+        setDisplayed(bars.map(() => 0));
         setRunId((n) => n + 1);
       }}
       onMouseLeave={() => setHovered(false)}
     >
       <div className="w-[205px] border border-ink/80 bg-card px-4 py-3 shadow-[3px_3px_0_rgba(17,17,16,0.08)]">
         <div className="mb-3 text-[10px] font-semibold tracking-[0.12em] text-muted">
-          MONTE CARLO · 10 000×
+          MONTE CARLO · {pollCount || "—"} PRIESKUMOV
         </div>
-        <div className="space-y-2.5">
-          {PREDIKCIA_BARS.map((b, i) => {
-            const winner = b.pct >= 50;
-            return (
-              <div key={b.label} className="flex items-center gap-2">
-                <span
-                  className="rounded-full shrink-0"
-                  style={{
-                    backgroundColor: b.color,
-                    width: hovered && winner ? 14 : 12,
-                    height: hovered && winner ? 14 : 12,
-                    boxShadow:
-                      hovered && winner
-                        ? `0 0 0 3px color-mix(in srgb, ${b.color} 22%, white)`
-                        : "none",
-                    transition: "width 320ms ease, height 320ms ease, box-shadow 320ms ease",
-                  }}
-                />
-                <span
-                  className="tracking-[0.02em] text-ink w-10 shrink-0"
-                  style={{
-                    fontSize: hovered && winner ? 11.5 : 11,
-                    fontWeight: hovered && winner ? 700 : 500,
-                    transition: "font-size 320ms ease, font-weight 320ms ease",
-                  }}
-                >
-                  {b.label}
-                </span>
-                <div className="flex-1 h-2 bg-subtle overflow-hidden">
-                  <div
-                    className="h-full"
+        {bars.length === 0 ? (
+          <div className="py-8 text-center text-[11px] font-medium text-muted">
+            Dáta nie sú dostupné
+          </div>
+        ) : (
+          <div className="space-y-2.5">
+            {bars.map((b, i) => {
+              const winner = b.pct >= Math.max(...bars.map((bar) => bar.pct));
+              return (
+                <div key={b.label} className="flex items-center gap-2">
+                  <span
+                    className="shrink-0 rounded-full"
                     style={{
-                      width: `${displayed[i]}%`,
-                      background: b.color,
-                      transition: "width 80ms linear",
+                      backgroundColor: b.color,
+                      width: hovered && winner ? 14 : 12,
+                      height: hovered && winner ? 14 : 12,
+                      boxShadow:
+                        hovered && winner
+                          ? `0 0 0 3px color-mix(in srgb, ${b.color} 22%, white)`
+                          : "none",
+                      transition: "width 320ms ease, height 320ms ease, box-shadow 320ms ease",
                     }}
                   />
+                  <span
+                    className="w-10 shrink-0 tracking-[0.02em] text-ink"
+                    style={{
+                      fontSize: hovered && winner ? 11.5 : 11,
+                      fontWeight: hovered && winner ? 700 : 500,
+                      transition: "font-size 320ms ease, font-weight 320ms ease",
+                    }}
+                  >
+                    {b.label}
+                  </span>
+                  <div className="h-2 flex-1 overflow-hidden bg-subtle">
+                    <div
+                      className="h-full"
+                      style={{
+                        width: `${displayed[i] ?? 0}%`,
+                        background: b.color,
+                        transition: "width 80ms linear",
+                      }}
+                    />
+                  </div>
+                  <span
+                    className="w-8 text-right tabular-nums text-ink"
+                    style={{
+                      fontSize: hovered && winner ? 12.5 : 11,
+                      fontWeight: hovered && winner ? 800 : 700,
+                      transition: "font-size 320ms ease, font-weight 320ms ease",
+                    }}
+                  >
+                    {Math.round(displayed[i] ?? 0)}%
+                  </span>
                 </div>
-                <span
-                  className="tabular-nums text-ink w-8 text-right"
-                  style={{
-                    fontSize: hovered && winner ? 12.5 : 11,
-                    fontWeight: hovered && winner ? 800 : 700,
-                    transition: "font-size 320ms ease, font-weight 320ms ease",
-                  }}
-                >
-                  {Math.round(displayed[i])}%
-                </span>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-export function SimulatorMini() {
-  const parties = [
-    { color: "#1a6eb5", seats: 36 },
-    { color: "#c0392b", seats: 31 },
-    { color: "#2c3e50", seats: 20 },
-    { color: "#16a085", seats: 16 },
-    { color: "#e74c3c", seats: 14 },
-    { color: "#27ae60", seats: 13 },
-    { color: "#1a3a6b", seats: 10 },
-    { color: "#d63384", seats: 10 },
-  ];
-
-  const dotColours: string[] = [];
-  for (const p of parties) {
-    for (let i = 0; i < p.seats; i++) dotColours.push(p.color);
-  }
-  while (dotColours.length < 150) dotColours.push("#e8e3db");
+export function SimulatorMini({ seats }: { seats: MiniSeatSlice[] }) {
+  const dotColours = useMemo(() => {
+    const colours: string[] = [];
+    for (const p of seats) {
+      for (let i = 0; i < p.seats; i++) colours.push(p.color);
+    }
+    while (colours.length < 150) colours.push("#e8e3db");
+    return colours.slice(0, 150);
+  }, [seats]);
 
   const arcCounts = [15, 22, 28, 35, 50];
+  const roundSvgCoord = (value: number) => Number(value.toFixed(4));
   const dots: { x: number; y: number; color: string; sortIdx: number }[] = [];
   let dotIndex = 0;
   arcCounts.forEach((count, arcIdx) => {
@@ -157,8 +159,8 @@ export function SimulatorMini() {
     for (let i = 0; i < count; i++) {
       const angle = Math.PI - (i / (count - 1)) * Math.PI;
       dots.push({
-        x: 80 + r * Math.cos(angle),
-        y: 72 - r * Math.sin(angle),
+        x: roundSvgCoord(80 + r * Math.cos(angle)),
+        y: roundSvgCoord(72 - r * Math.sin(angle)),
         color: dotColours[dotIndex] ?? "#e8e3db",
         sortIdx: dotIndex,
       });
@@ -169,8 +171,7 @@ export function SimulatorMini() {
   const { ref, inView } = useInViewOnce<HTMLDivElement>();
   const [hovered, setHovered] = useState(false);
   const [runId, setRunId] = useState(0);
-  const seats = parties.reduce((s, p) => s + p.seats, 0);
-  const majority = seats >= 76;
+  const totalSeats = seats.reduce((s, p) => s + p.seats, 0);
 
   return (
     <div
@@ -184,8 +185,8 @@ export function SimulatorMini() {
     >
       <div className="w-[205px] border border-ink/80 bg-card px-3 py-3 shadow-[3px_3px_0_rgba(17,17,16,0.08)]">
         <div className="mb-2 flex items-center justify-between text-[10px] font-semibold tracking-[0.12em] text-muted">
-          <span>KOALÍCIA</span>
-          <span className="tabular-nums text-ink">{seats}/150</span>
+          <span>MANDÁTY</span>
+          <span className="tabular-nums text-ink">{totalSeats}/150</span>
         </div>
         <svg
           key={runId}
@@ -229,11 +230,8 @@ export function SimulatorMini() {
         </svg>
         <div className="mt-1 flex items-center justify-between text-[10px] tracking-[0.04em]">
           <span className="text-muted">väčšina 76</span>
-          <span
-            className="font-semibold tabular-nums"
-            style={{ color: majority ? "#1a6eb5" : "#c0392b" }}
-          >
-            {majority ? "✓ stabilná" : "× nestabilná"}
+          <span className="font-semibold tabular-nums text-[#1a6eb5]">
+            z prieskumu
           </span>
         </div>
       </div>
@@ -254,21 +252,17 @@ export function SimulatorMini() {
   );
 }
 
-export function PrieskumyMini() {
+export function PrieskumyMini({
+  parties,
+  date,
+  agency,
+}: {
+  parties: MiniPartyBar[];
+  date: string;
+  agency: string;
+}) {
   const [isHovered, setIsHovered] = useState(false);
-  const parties = [
-    { label: "PS", pct: 23.1, color: "#1daee9" },
-    { label: "SMER", pct: 17.4, color: "#df2b2b" },
-    { label: "REP", pct: 8.2, color: "#244ea8" },
-    { label: "SLOV", pct: 8.9, color: "#47b6c8" },
-    { label: "SaS", pct: 7.4, color: "#97ca1b" },
-    { label: "KDH", pct: 7.2, color: "#224b8c" },
-    { label: "HLAS", pct: 11.0, color: "#ff2323" },
-    { label: "DEM", pct: 4.9, color: "#f51766" },
-    { label: "AL", pct: 2.9, color: "#fa8c1f" },
-    { label: "SNS", pct: 4.6, color: "#2f3a8f" },
-  ];
-  const rowHeight = 24;
+  const rowHeight = 17;
   const sortedLabels = [...parties]
     .sort((a, b) => b.pct - a.pct)
     .map((party) => party.label);
@@ -286,81 +280,84 @@ export function PrieskumyMini() {
       onMouseLeave={() => setIsHovered(false)}
     >
       <div className="w-[205px] border border-ink/80 bg-card px-4 py-3 shadow-[3px_3px_0_rgba(17,17,16,0.08)]">
-        <div className="mb-3 text-[10px] font-semibold tracking-[0.12em] text-muted">
-          2025-09-22
+        <div className="mb-3 truncate text-[10px] font-semibold tracking-[0.12em] text-muted">
+          {agency} · {date}
         </div>
-        <div
-          className="relative"
-          style={{ height: parties.length * rowHeight }}
-        >
-          {parties.map((party) => {
-            const sortedIndex = sortedLabels.indexOf(party.label);
-            const isTopThree = sortedIndex < 3;
-            const topThreeOffset = isHovered
-              ? sortedIndex === 0
-                ? -2
-                : sortedIndex === 1
-                  ? 0
-                  : 1.5
-              : 0;
-            return (
-              <div
-                key={party.label}
-                className="absolute left-0 right-0 flex items-center justify-between"
-                style={{
-                  height: rowHeight,
-                  transform: `translateY(${(positions.get(party.label) ?? 0) + topThreeOffset}px)`,
-                  transition:
-                    "transform 760ms cubic-bezier(0.2, 0.9, 0.2, 1), opacity 320ms ease, scale 760ms cubic-bezier(0.2, 0.9, 0.2, 1), filter 320ms ease",
-                  opacity: isHovered && !isTopThree ? 0.62 : 1,
-                  scale: isHovered && isTopThree ? "1.035" : "1",
-                  filter:
-                    isHovered && isTopThree
-                      ? "drop-shadow(0 4px 10px rgba(17,17,16,0.12))"
-                      : "none",
-                  zIndex: isHovered ? parties.length - sortedIndex : parties.length,
-                }}
-              >
-                <div className="flex items-center gap-2">
+        {parties.length === 0 ? (
+          <div className="py-8 text-center text-[11px] font-medium text-muted">
+            Dáta nie sú dostupné
+          </div>
+        ) : (
+          <div className="relative" style={{ height: parties.length * rowHeight }}>
+            {parties.map((party) => {
+              const sortedIndex = sortedLabels.indexOf(party.label);
+              const isTopThree = sortedIndex < 3;
+              const topThreeOffset = isHovered
+                ? sortedIndex === 0
+                  ? -2
+                  : sortedIndex === 1
+                    ? 0
+                    : 1.5
+                : 0;
+              return (
+                <div
+                  key={party.label}
+                  className="absolute left-0 right-0 flex items-center justify-between"
+                  style={{
+                    height: rowHeight,
+                    transform: `translateY(${(positions.get(party.label) ?? 0) + topThreeOffset}px)`,
+                    transition:
+                      "transform 760ms cubic-bezier(0.2, 0.9, 0.2, 1), opacity 320ms ease, scale 760ms cubic-bezier(0.2, 0.9, 0.2, 1), filter 320ms ease",
+                    opacity: isHovered && !isTopThree ? 0.62 : 1,
+                    scale: isHovered && isTopThree ? "1.035" : "1",
+                    filter:
+                      isHovered && isTopThree
+                        ? "drop-shadow(0 4px 10px rgba(17,17,16,0.12))"
+                        : "none",
+                    zIndex: isHovered ? parties.length - sortedIndex : parties.length,
+                  }}
+                >
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="rounded-full"
+                      style={{
+                        backgroundColor: party.color,
+                        width: isHovered && isTopThree ? 14 : 12,
+                        height: isHovered && isTopThree ? 14 : 12,
+                        boxShadow:
+                          isHovered && isTopThree
+                            ? `0 0 0 3px color-mix(in srgb, ${party.color} 22%, white)`
+                            : "none",
+                        transition:
+                          "width 320ms ease, height 320ms ease, box-shadow 320ms ease",
+                      }}
+                    />
+                    <span
+                      className="tracking-[0.02em] text-ink"
+                      style={{
+                        fontSize: isHovered && isTopThree ? 11.5 : 11,
+                        fontWeight: isHovered && isTopThree ? 700 : 500,
+                        transition: "font-size 320ms ease, font-weight 320ms ease",
+                      }}
+                    >
+                      {party.label}
+                    </span>
+                  </div>
                   <span
-                    className="rounded-full"
+                    className="tabular-nums text-ink"
                     style={{
-                      backgroundColor: party.color,
-                      width: isHovered && isTopThree ? 14 : 12,
-                      height: isHovered && isTopThree ? 14 : 12,
-                      boxShadow:
-                        isHovered && isTopThree
-                          ? `0 0 0 3px color-mix(in srgb, ${party.color} 22%, white)`
-                          : "none",
-                      transition:
-                        "width 320ms ease, height 320ms ease, box-shadow 320ms ease",
-                    }}
-                  />
-                  <span
-                    className="tracking-[0.02em] text-ink"
-                    style={{
-                      fontSize: isHovered && isTopThree ? 11.5 : 11,
-                      fontWeight: isHovered && isTopThree ? 700 : 500,
+                      fontSize: isHovered && isTopThree ? 12.5 : 11,
+                      fontWeight: isHovered && isTopThree ? 800 : 700,
                       transition: "font-size 320ms ease, font-weight 320ms ease",
                     }}
                   >
-                    {party.label}
+                    {party.pct.toFixed(1)}%
                   </span>
                 </div>
-                <span
-                  className="tabular-nums text-ink"
-                  style={{
-                    fontSize: isHovered && isTopThree ? 12.5 : 11,
-                    fontWeight: isHovered && isTopThree ? 800 : 700,
-                    transition: "font-size 320ms ease, font-weight 320ms ease",
-                  }}
-                >
-                  {party.pct.toFixed(1)}%
-                </span>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

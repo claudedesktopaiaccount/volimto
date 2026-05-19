@@ -17,7 +17,7 @@ import {
   mpAssistants,
   mpOffices,
 } from "@/lib/db/schema";
-import { eq, desc, count, sum, sql, and, asc } from "drizzle-orm";
+import { eq, desc, count, sum, sql, and, asc, ilike, or } from "drizzle-orm";
 
 // ─── Row Types ───────────────────────────────────────────────────────────────
 
@@ -111,7 +111,14 @@ export async function getMps(
   }
   if (search) {
     const safeSearch = search.replace(/[%_\\]/g, "\\$&");
-    conditions.push(sql`${mps.nameDisplay} LIKE ${"%" + safeSearch + "%"} ESCAPE '\\'`);
+    const pattern = `%${safeSearch}%`;
+    conditions.push(
+      or(
+        ilike(mps.nameDisplay, pattern),
+        ilike(mps.nameFull, pattern),
+        ilike(mps.slug, pattern)
+      )
+    );
   }
 
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;

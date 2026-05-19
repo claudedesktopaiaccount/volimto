@@ -8,7 +8,6 @@ import GdprBanner from "@/components/GdprBanner";
 import UmamiAnalytics from "@/components/UmamiAnalytics";
 import ThemeProvider from "@/components/ThemeProvider";
 import { AuthProvider } from "@/components/AuthProvider";
-import { ViewTransition } from "react";
 import PageNumber from "@/components/PageNumber";
 import {
   SITE_URL,
@@ -114,8 +113,8 @@ export default async function RootLayout({
               Preskočiť na obsah
             </a>
             <Navbar initialDays={initialDaysUntilElection} />
-            <main id="main-content" className="pb-16 lg:pb-0" style={{ viewTransitionName: "page-content" }}>
-              <ViewTransition>{children}</ViewTransition>
+            <main id="main-content" className="pb-16 lg:pb-0">
+              {children}
             </main>
             <Footer />
             <PageNumber />

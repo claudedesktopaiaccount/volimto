@@ -17,14 +17,6 @@ test.describe("Koalícny simulátor", () => {
   test("selecting parties updates coalition seat count", async ({ page }) => {
     await page.goto("/koalicny-simulator");
 
-    // Get initial state — find seat count display
-    const getCoalitionSeats = async () => {
-      const text = await page.textContent("body");
-      // Look for a number near "mandát" context
-      const match = text?.match(/(\d+)\s*(?:mandát|kresiel|seat)/i);
-      return match ? parseInt(match[1]) : 0;
-    };
-
     // Select first party
     const firstParty = page.locator("[aria-pressed='false']").first();
     await firstParty.click();

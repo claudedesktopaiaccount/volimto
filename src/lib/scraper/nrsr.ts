@@ -50,14 +50,142 @@ export type Fetcher = (url: string) => Promise<string>;
 const BASE_URL = "https://www.nrsr.sk";
 const USER_AGENT =
   "Mozilla/5.0 (compatible; VolimTo/1.0; +https://volimto.sk)";
+const FETCH_TIMEOUT_MS = 30_000;
+const LEGISLATION_TIMEOUT_MS = 45_000;
+const FETCH_ATTEMPTS = 3;
+const NRSR_MIN_REQUEST_DELAY_MS = 800;
+const NRSR_REQUEST_JITTER_MS = 400;
+const DEFAULT_RATE_LIMIT_RETRY_MS = 60 * 60 * 1000;
+
+export class NrsrRateLimitError extends Error {
+  readonly retryAfterMs: number;
+  readonly url: string;
+
+  constructor(url: string, retryAfterMs: number) {
+    super(`HTTP 429 for ${url}`);
+    this.name = "NrsrRateLimitError";
+    this.retryAfterMs = retryAfterMs;
+    this.url = url;
+  }
+}
+
+class NrsrHttpError extends Error {
+  readonly status: number;
+  readonly retryAfterMs: number | null;
+  readonly url: string;
+
+  constructor(url: string, status: number, retryAfterMs: number | null) {
+    super(`HTTP ${status} for ${url}`);
+    this.name = "NrsrHttpError";
+    this.status = status;
+    this.retryAfterMs = retryAfterMs;
+    this.url = url;
+  }
+}
+
+let nrsrQueue: Promise<void> = Promise.resolve();
+let lastNrsrRequestAt = 0;
+
+export function parseRetryAfterMs(raw: string | null, nowMs: number = Date.now()): number | null {
+  if (!raw) return null;
+  const seconds = Number(raw);
+  if (Number.isFinite(seconds)) return Math.max(0, seconds * 1000);
+
+  const dateMs = Date.parse(raw);
+  if (Number.isFinite(dateMs)) return Math.max(0, dateMs - nowMs);
+  return null;
+}
+
+export function isNrsrRateLimitError(error: unknown): error is NrsrRateLimitError {
+  return error instanceof NrsrRateLimitError;
+}
+
+function retryAfterFromError(error: unknown): number | null {
+  if (error instanceof NrsrRateLimitError) return error.retryAfterMs;
+  if (error instanceof NrsrHttpError) return error.retryAfterMs;
+  return null;
+}
+
+function isRetryableError(error: unknown): boolean {
+  if (error instanceof NrsrRateLimitError) return false;
+  if (error instanceof NrsrHttpError) return [502, 503, 504].includes(error.status);
+  if (error instanceof DOMException && error.name === "TimeoutError") return true;
+  if (error instanceof Error && /timeout|terminated|ECONNRESET|ETIMEDOUT/i.test(error.message)) return true;
+  return false;
+}
+
+async function runThrottledNrsrRequest<T>(fn: () => Promise<T>): Promise<T> {
+  const run = nrsrQueue.then(async () => {
+    const elapsed = Date.now() - lastNrsrRequestAt;
+    const jitter = Math.floor(Math.random() * NRSR_REQUEST_JITTER_MS);
+    const waitMs = Math.max(0, NRSR_MIN_REQUEST_DELAY_MS + jitter - elapsed);
+    if (waitMs > 0) await sleep(waitMs);
+
+    try {
+      return await fn();
+    } finally {
+      lastNrsrRequestAt = Date.now();
+    }
+  });
+
+  nrsrQueue = run.then(() => undefined, () => undefined);
+  return run;
+}
+
+async function throttledFetch(url: string, init: RequestInit, timeoutMs: number): Promise<Response> {
+  return runThrottledNrsrRequest(async () => {
+    const headers = Object.fromEntries(new Headers(init.headers));
+    const response = await fetch(url, {
+      ...init,
+      signal: AbortSignal.timeout(timeoutMs),
+      headers: {
+        ...headers,
+        "User-Agent": USER_AGENT,
+      },
+    });
+
+    if (response.status === 429) {
+      const retryAfterMs =
+        parseRetryAfterMs(response.headers.get("retry-after")) ?? DEFAULT_RATE_LIMIT_RETRY_MS;
+      throw new NrsrRateLimitError(url, retryAfterMs);
+    }
+
+    if (!response.ok) {
+      throw new NrsrHttpError(url, response.status, parseRetryAfterMs(response.headers.get("retry-after")));
+    }
+
+    return response;
+  });
+}
+
+async function withRetry<T>(
+  label: string,
+  fn: () => Promise<T>,
+  attempts: number = FETCH_ATTEMPTS
+): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      if (error instanceof NrsrRateLimitError) throw error;
+      if (attempt < attempts && isRetryableError(error)) {
+        await sleep(retryAfterFromError(error) ?? 800 * attempt);
+      } else {
+        break;
+      }
+    }
+  }
+  throw lastError instanceof Error
+    ? lastError
+    : new Error(`${label} failed`);
+}
 
 function defaultFetcher(url: string): Promise<string> {
-  return fetch(url, {
-    signal: AbortSignal.timeout(15_000),
-    headers: { "User-Agent": USER_AGENT },
-  }).then((r) => {
-    if (!r.ok) throw new Error(`HTTP ${r.status} for ${url}`);
-    return r.text();
+  return withRetry(`GET ${url}`, async () => {
+    const response = await throttledFetch(url, {}, FETCH_TIMEOUT_MS);
+    return response.text();
   });
 }
 
@@ -68,7 +196,14 @@ function defaultFetcher(url: string): Promise<string> {
  * Flow: GET sslp form → extract ViewState → POST with mpsCombo=personId →
  * follow 302 redirect → return result HTML.
  */
-export async function fetchLegislationHtml(
+export function fetchLegislationHtml(
+  personId: string,
+  term: number
+): Promise<string> {
+  return withRetry(`sslp ${personId}`, () => fetchLegislationHtmlOnce(personId, term));
+}
+
+async function fetchLegislationHtmlOnce(
   personId: string,
   term: number
 ): Promise<string> {
@@ -80,11 +215,7 @@ export async function fetchLegislationHtml(
   };
 
   // Step 1: GET the search form to obtain ViewState tokens
-  const formResp = await fetch(sslpUrl, {
-    signal: AbortSignal.timeout(15_000),
-    headers,
-  });
-  if (!formResp.ok) throw new Error(`sslp form GET: HTTP ${formResp.status}`);
+  const formResp = await throttledFetch(sslpUrl, { headers }, LEGISLATION_TIMEOUT_MS);
   const formHtml = await formResp.text();
 
   const vsMatch = formHtml.match(/id="__VIEWSTATE"\s+value="([^"]+)"/);
@@ -123,9 +254,8 @@ export async function fetchLegislationHtml(
     "_sectionLayoutContainer$ctl01$cmdSearch": "Vyhľadať",
   });
 
-  const postResp = await fetch(sslpUrl, {
+  const postResp = await throttledFetch(sslpUrl, {
     method: "POST",
-    signal: AbortSignal.timeout(20_000),
     redirect: "follow",
     headers: {
       ...headers,
@@ -135,9 +265,8 @@ export async function fetchLegislationHtml(
       ...(cookieHeader ? { "Cookie": cookieHeader } : {}),
     },
     body: params.toString(),
-  });
+  }, LEGISLATION_TIMEOUT_MS);
 
-  if (!postResp.ok) throw new Error(`sslp POST: HTTP ${postResp.status}`);
   return postResp.text();
 }
 
@@ -164,17 +293,33 @@ export function makeSlug(name: string): string {
     .replace(/^-|-$/g, "");
 }
 
+function cleanText(raw: string): string {
+  return raw.replace(/\s+/g, " ").trim();
+}
+
+function stripDiacritics(raw: string): string {
+  return raw.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+function stableHash(raw: string): string {
+  let hash = 5381;
+  for (let i = 0; i < raw.length; i++) {
+    hash = (hash * 33) ^ raw.charCodeAt(i);
+  }
+  return (hash >>> 0).toString(36);
+}
+
 // ─── Category / Result mapping ────────────────────────────
 
 export function mapTopicCategory(title: string): string {
   const t = title.toLowerCase();
-  if (t.includes("zákon") || t.includes("novela")) return "zákon";
-  if (t.includes("rozpočet") || t.includes("rozpočt")) return "rozpočet";
-  if (t.includes("personálne") || t.includes("voľba")) return "personálne";
+  const n = stripDiacritics(t);
+  if (n.includes("zakon") || t.includes("novela")) return "zákon";
+  if (n.includes("rozpocet") || n.includes("rozpoct")) return "rozpočet";
+  if (n.includes("personalne") || n.includes("volba")) return "personálne";
   if (
-    t.includes("zahraniční") ||
-    t.includes("zahranič") ||
-    t.includes("medzinárod")
+    n.includes("zahranic") ||
+    n.includes("medzinarod")
   )
     return "zahranično-politické";
   return "iné";
@@ -182,9 +327,10 @@ export function mapTopicCategory(title: string): string {
 
 export function mapResult(raw: string): string {
   const r = raw.toLowerCase().trim();
-  if (r.includes("zamietnut") || r.includes("neprijat")) return "zamietnuté";
-  if (r.includes("prijat") || r.includes("schválen")) return "schválené";
-  if (r.includes("odroč")) return "odročené";
+  const n = stripDiacritics(r);
+  if (r.includes("zamietnut") || n.includes("nepresiel") || n.includes("neprijat")) return "zamietnuté";
+  if (r.includes("prijat") || n.includes("schvalen") || n.includes("presiel")) return "schválené";
+  if (n.includes("odroc")) return "odročené";
   console.warn("[nrsr] mapResult: unmatched outcome:", raw);
   return "neznámy";
 }
@@ -231,22 +377,34 @@ export function parseIndependentIds(html: string): Set<string> {
 
 /**
  * Scrapes list of MPs from NRSR.
- * URL: https://www.nrsr.sk/web/Default.aspx?sid=poslanci/zoznam_adv
+ * Prefer the alphabetical list: the advanced list is slower and can hang.
  */
 export async function scrapeMps(fetcher: Fetcher = defaultFetcher): Promise<ScrapedMp[]> {
-  const url = `${BASE_URL}/web/Default.aspx?sid=poslanci/zoznam_adv`;
-  try {
-    const html = await fetcher(url);
-    return parseMpList(html);
-  } catch (err) {
-    console.error("[nrsr] scrapeMps error:", err);
-    return [];
+  const urls = [
+    `${BASE_URL}/web/default.aspx?sid=poslanci/zoznam_abc`,
+    `${BASE_URL}/web/Default.aspx?sid=poslanci/zoznam_adv`,
+  ];
+  const errors: string[] = [];
+
+  for (const url of urls) {
+    try {
+      const html = await fetcher(url);
+      const mps = parseMpList(html);
+      if (mps.length > 0) return mps;
+      errors.push(`${url}: parsed 0 MPs`);
+    } catch (err) {
+      errors.push(`${url}: ${(err as Error).message}`);
+    }
   }
+
+  console.error("[nrsr] scrapeMps error:", errors.join("; "));
+  return [];
 }
 
 export function parseMpList(html: string): ScrapedMp[] {
   const $ = cheerio.load(html);
   const mps: ScrapedMp[] = [];
+  const seenIds = new Set<string>();
 
   // NRSR renders MPs in a table with class "tab_zoznam" or similar
   // Each row: link to poslanec detail page with PoslanecID param
@@ -265,6 +423,8 @@ export function parseMpList(html: string): ScrapedMp[] {
     if (!idMatch) return;
 
     const nrsrPersonId = idMatch[1];
+    if (seenIds.has(nrsrPersonId)) return;
+
     const nameFull = $link.text().trim();
     if (!nameFull) return;
 
@@ -304,6 +464,7 @@ export function parseMpList(html: string): ScrapedMp[] {
         : `${BASE_URL}${photoSrc}`
       : null;
 
+    seenIds.add(nrsrPersonId);
     mps.push({
       nrsrPersonId,
       nameFull,
@@ -317,12 +478,46 @@ export function parseMpList(html: string): ScrapedMp[] {
     });
   });
 
+  if (mps.length === 0) {
+    $("a[href*='PoslanecID']").each((_, link) => {
+      const $link = $(link);
+      const href = $link.attr("href") ?? "";
+      const idMatch = href.match(/PoslanecID=(\d+)/i);
+      if (!idMatch) return;
+
+      const nrsrPersonId = idMatch[1];
+      if (seenIds.has(nrsrPersonId)) return;
+
+      const nameFull = cleanText($link.text());
+      if (!nameFull) return;
+
+      const nameParts = nameFull.replace(",", "").split(/\s+/);
+      const nameDisplay =
+        nameParts.length >= 2
+          ? `${nameParts[nameParts.length - 1]} ${nameParts.slice(0, -1).join(" ")}`.trim()
+          : nameFull.trim();
+
+      seenIds.add(nrsrPersonId);
+      mps.push({
+        nrsrPersonId,
+        nameFull,
+        nameDisplay,
+        slug: makeSlug(nameDisplay),
+        partyAbbr: null,
+        role: "poslanec",
+        constituency: null,
+        birthYear: null,
+        photoUrl: null,
+      });
+    });
+  }
+
   return mps;
 }
 
 // ─── scrapeRecentVotes ────────────────────────────────────
 
-const VOTES_LIST_URL = `${BASE_URL}/web/Default.aspx?sid=schodze/hlasovanie/hlasovanie_zoznam&CisObdobia=9`;
+const VOTES_LIST_URL = `${BASE_URL}/web/Default.aspx?sid=schodze/hlasovanie`;
 const VOTE_DETAIL_URL = `${BASE_URL}/web/Default.aspx?sid=schodze/hlasovanie/hlasovanie&ID=`;
 
 export async function scrapeRecentVotes(
@@ -363,9 +558,10 @@ export function parseVoteIds(html: string, limit: number): string[] {
   const ids: string[] = [];
   const seen = new Set<string>();
 
-  $("a[href*='hlasovanie&ID='], a[href*='hlasovanie_detail'], a[href*='ID=']").each((_, el) => {
+  $("a[href*='ID=']").each((_, el) => {
     if (ids.length >= limit) return false;
     const href = $(el).attr("href") ?? "";
+    if (!isVoteDetailHref(href)) return;
     const match = href.match(/[?&]ID=(\d+)/i);
     if (match && !seen.has(match[1])) {
       seen.add(match[1]);
@@ -374,6 +570,14 @@ export function parseVoteIds(html: string, limit: number): string[] {
   });
 
   return ids;
+}
+
+function isVoteDetailHref(href: string): boolean {
+  const normalizedHref = href.toLowerCase();
+  return (
+    normalizedHref.includes("sid=schodze/hlasovanie/hlasovanie") ||
+    normalizedHref.includes("sid=schodze%2fhlasovanie%2fhlasovanie")
+  );
 }
 
 export function parseVoteDetail(
@@ -385,7 +589,8 @@ export function parseVoteDetail(
   const records: ScrapedVoteRecord[] = [];
 
   // Extract vote metadata
-  const bodyText = $("body").text();
+  const bodyText = cleanText($("body").text());
+  const normalizedBodyText = stripDiacritics(bodyText).toLowerCase();
 
   // Title: look for h1, h2 or specific labeled cell
   let titleSk =
@@ -400,6 +605,13 @@ export function parseVoteDetail(
       .first()
       .text()
       .trim();
+
+  if (titleSk === "Hlasovanie") titleSk = "";
+
+  if (!titleSk) {
+    const currentTitleMatch = bodyText.match(/N[áa]zov hlasovania\s+(.+?)\s+V[ýy]sledok hlasovania/i);
+    if (currentTitleMatch?.[1]) titleSk = currentTitleMatch[1].trim();
+  }
 
   if (!titleSk) {
     // Fallback: find a descriptive-looking label in the page
@@ -431,10 +643,10 @@ export function parseVoteDetail(
   let votesAbsent = 0;
 
   // NRSR typically shows: Za: X  Proti: X  Zdržal sa: X  Neprítomní: X
-  const forMatch = bodyText.match(/[Zz]a[:\s]+(\d+)/);
-  const againstMatch = bodyText.match(/[Pp]roti[:\s]+(\d+)/);
-  const abstainMatch = bodyText.match(/[Zz]držal[:\s]+(\d+)/);
-  const absentMatch = bodyText.match(/[Nn]eprítomn[íi][:\s]+(\d+)/);
+  const forMatch = normalizedBodyText.match(/\bza(?:\s+hlasovalo)?[:\s]+(\d+)/);
+  const againstMatch = normalizedBodyText.match(/\bproti(?:\s+hlasovalo)?[:\s]+(\d+)/);
+  const abstainMatch = normalizedBodyText.match(/\bzdrzal(?:o sa(?:\s+hlasovania)?)?[:\s]+(\d+)/);
+  const absentMatch = normalizedBodyText.match(/\bnepritomni[:\s]+(\d+)/);
 
   if (forMatch) votesFor = parseInt(forMatch[1], 10);
   if (againstMatch) votesAgainst = parseInt(againstMatch[1], 10);
@@ -443,7 +655,9 @@ export function parseVoteDetail(
 
   // Result
   let rawResult = "";
-  const resultMatch = bodyText.match(/[Vv]ýsledok[:\s]+([^\n\r.]+)/);
+  const resultMatch =
+    bodyText.match(/V[ýy]sledok hlasovania\s+(.+?)\s+Pr[íi]tomn[íi]/i) ??
+    bodyText.match(/[Vv]ýsledok[:\s]+([^\n\r.]+)/);
   if (resultMatch) rawResult = resultMatch[1].trim();
   const result = mapResult(rawResult);
 
@@ -474,7 +688,7 @@ export function parseVoteDetail(
     const nrsrPersonId = personMatch[1];
 
     // Choice: look for Z/P/N/B/? in cells
-    let choiceRaw = "?";
+    let choiceRaw: string | null = null;
     $row.find("td").each((_, td) => {
       const t = $(td).text().trim();
       if (/^[ZPNB?]$/.test(t)) {
@@ -482,6 +696,7 @@ export function parseVoteDetail(
         return false;
       }
     });
+    if (!choiceRaw) return;
 
     records.push({
       nrsrVoteId,
@@ -490,12 +705,55 @@ export function parseVoteDetail(
     });
   });
 
+  if (records.length === 0) {
+    records.push(...parseGroupedVoteRecords($, nrsrVoteId));
+  }
+
   return { vote, records };
+}
+
+function parseGroupedVoteRecords(
+  $: cheerio.CheerioAPI,
+  nrsrVoteId: string
+): ScrapedVoteRecord[] {
+  const records: ScrapedVoteRecord[] = [];
+  let currentChoice: string | null = null;
+
+  $("table.hpo_result_table tr").each((_, row) => {
+    const $row = $(row);
+    const rowLabel = cleanText($row.text());
+    const normalizedRowLabel = stripDiacritics(rowLabel).toLowerCase();
+    const $links = $row.find("a[href*='PoslanecID']");
+
+    if ($links.length === 0) {
+      if (normalizedRowLabel === "za") currentChoice = "za";
+      else if (normalizedRowLabel === "proti") currentChoice = "proti";
+      else if (normalizedRowLabel.includes("zdrzal")) currentChoice = "zdržal_sa";
+      else if (normalizedRowLabel.includes("nehlasoval")) currentChoice = "nehlasoval";
+      else if (normalizedRowLabel.includes("nepritom")) currentChoice = "neprítomný";
+      return;
+    }
+
+    const choice = currentChoice;
+    if (!choice) return;
+    $links.each((_, link) => {
+      const href = $(link).attr("href") ?? "";
+      const personMatch = href.match(/PoslanecID=(\d+)/i);
+      if (!personMatch?.[1]) return;
+      records.push({
+        nrsrVoteId,
+        nrsrPersonId: personMatch[1],
+        choice,
+      });
+    });
+  });
+
+  return records;
 }
 
 // ─── scrapeRecentSpeeches ─────────────────────────────────
 
-const SPEECHES_URL = `${BASE_URL}/web/Default.aspx?sid=schodze/stenozaznamy`;
+const SPEECHES_URL = `${BASE_URL}/web/Default.aspx?CisObdobia=9&ShowTopItems=True&sid=schodze/rozprava/vyhladavanie`;
 
 export async function scrapeRecentSpeeches(
   limit: number = 50,
@@ -514,6 +772,7 @@ export function parseSpeechesList(html: string, limit: number): ScrapedSpeech[] 
   const $ = cheerio.load(html);
   const speeches: ScrapedSpeech[] = [];
   const seen = new Set<string>();
+  const personIdByName = parsePersonOptionMap($);
 
   // NRSR stenographic records: links to individual speeches
   // Each entry typically has: date, MP name link, speech text or title
@@ -528,6 +787,15 @@ export function parseSpeechesList(html: string, limit: number): ScrapedSpeech[] 
       .find("a[href*='ID=']")
       .filter((_, el) => !$(el).attr("href")?.includes("PoslanecID"))
       .first();
+
+    if (!$personLink.length && !$speechLink.length && personIdByName.size > 0) {
+      const fallback = parseSpeechRowWithoutLinks($row, personIdByName);
+      if (!fallback) return;
+      if (seen.has(fallback.nrsrSpeechId)) return;
+      seen.add(fallback.nrsrSpeechId);
+      speeches.push(fallback);
+      return;
+    }
 
     // Need at least a person or speech link
     const $anyLink = $personLink.length ? $personLink : $speechLink;
@@ -596,6 +864,53 @@ export function parseSpeechesList(html: string, limit: number): ScrapedSpeech[] 
   });
 
   return speeches;
+}
+
+function parsePersonOptionMap($: cheerio.CheerioAPI): Map<string, string> {
+  const map = new Map<string, string>();
+  $("select option[value]").each((_, option) => {
+    const value = $(option).attr("value") ?? "";
+    const name = cleanText($(option).text());
+    if (/^\d+$/.test(value) && name.includes(",")) map.set(name, value);
+  });
+  return map;
+}
+
+function parseSpeechRowWithoutLinks(
+  $row: cheerio.Cheerio<AnyNode>,
+  personIdByName: Map<string, string>
+): ScrapedSpeech | null {
+  const rowText = cleanText($row.text());
+  if (!rowText) return null;
+  const date = parseSlovakDate(rowText);
+  if (!date) return null;
+
+  let matchedName: string | null = null;
+  let nrsrPersonId: string | null = null;
+  for (const [name, id] of personIdByName) {
+    if (rowText.includes(name)) {
+      matchedName = name;
+      nrsrPersonId = id;
+      break;
+    }
+  }
+  if (!matchedName || !nrsrPersonId) return null;
+
+  const markerIndex = rowText.indexOf("(text ");
+  const textSk =
+    markerIndex >= 0
+      ? rowText.slice(markerIndex).trim()
+      : rowText.slice(rowText.indexOf(matchedName)).trim();
+  if (textSk.length < 10) return null;
+
+  return {
+    nrsrSpeechId: `rozprava-${stableHash(rowText)}`,
+    nrsrPersonId,
+    date,
+    titleSk: rowText.slice(0, 200),
+    textSk,
+    sourceUrl: SPEECHES_URL,
+  };
 }
 
 // ─── scrapeMpActivities — per-MP NRSR enrichment ──────────
@@ -677,13 +992,6 @@ function absUrl(href: string): string {
   if (!href) return "";
   if (href.startsWith("http")) return href;
   return `${BASE_URL}/web/${href.replace(/^\/?web\//, "")}`;
-}
-
-function parseEur(raw: string): number | null {
-  // "2 314,00 €" → 2314.00
-  const cleaned = raw.replace(/[^\d,.-]/g, "").replace(/\s/g, "").replace(",", ".");
-  const n = parseFloat(cleaned);
-  return isFinite(n) ? n : null;
 }
 
 /** Parse a tab_zoznam table and return raw row cell texts (header row skipped). */
@@ -862,6 +1170,7 @@ export async function scrapeMpActivities(
   const safe = async <T>(label: string, fn: () => Promise<T>, fallback: T): Promise<T> => {
     try { return await fn(); }
     catch (err) {
+      if (isNrsrRateLimitError(err)) throw err;
       console.error(`[nrsr] mp ${nrsrPersonId} ${label} error:`, err);
       return fallback;
     }
@@ -874,7 +1183,11 @@ export async function scrapeMpActivities(
     async () => parseQuestionsList(await fetcher(urls.questions)), []);
   await sleep(400);
   const legislation = await safe("legislation",
-    async () => parseLegislationList(await fetcher(urls.legislation)), []);
+    async () => parseLegislationList(await (
+      fetcher === defaultFetcher
+        ? fetchLegislationHtml(nrsrPersonId, term)
+        : fetcher(urls.legislation)
+    )), []);
   await sleep(400);
   const amendments = await safe("amendments",
     async () => parseAmendmentsList(await fetcher(urls.amendments)), []);

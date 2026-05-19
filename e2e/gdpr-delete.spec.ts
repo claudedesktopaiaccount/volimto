@@ -18,8 +18,8 @@ test.describe("GDPR Data Deletion", () => {
 
   test("delete flow with confirmation dialog", async ({ page }) => {
     // Set up cookies
-    const csrfToken = await injectCsrfCookie(page);
-    const visitorId = await injectVisitorCookie(page);
+    await injectCsrfCookie(page);
+    await injectVisitorCookie(page);
 
     await page.goto("/sukromie");
 

@@ -10,6 +10,12 @@ Slovak political tracker — polls, predictions, coalition simulations, crowd pr
 
 User says "continue with HANDOFF.md" or similar → read `HANDOFF.md` at project root. Contains status, completed work, pending tasks (Phase 1-4), key files, technical notes, design rules. Pick up next incomplete task unless user specifies otherwise.
 
+## Workspace / Worktrees
+
+- Canonical workspace is this repository root: `C:\Users\misko\Downloads\volimto`.
+- Project memory lives in `AGENTS.md` and `HANDOFF.md`; check those before creating parallel state.
+- Do not create new git worktrees for this project unless the user explicitly asks for a new worktree. Use the existing workspace/branch, and if `git worktree list` shows stale entries, prune them instead of creating replacements.
+
 ## Tech Stack
 
 - **Framework**: Next.js 16 (App Router) + React 19 + TypeScript
@@ -69,7 +75,7 @@ drizzle.config.ts           # Drizzle Kit config (d1-http driver)
 ## Environment Variables
 
 See `.env.example`:
-- `DATABASE_URL` � Neon Postgres connection string
+- `DATABASE_URL` — Neon Postgres connection string
 
 ## Conventions
 
@@ -99,9 +105,19 @@ Haven't looked up docs this session → stop, use context7 first.
 - **PreToolUse**: Block direct edits to `.env*` files and `package-lock.json`
 
 ### Skills
-- `/deploy` � Deploy to Vercel
+- `/deploy` — Deploy to Vercel
 - `/db-migrate` — Generate and apply Drizzle database migrations
 - `/caveman` — ALWAYS invoke at session start to activate caveman compression mode (saves tokens)
 
 ### Subagents
 - `security-reviewer` — Audits credential handling, scraping safety, input sanitization
+
+## Windows / Codex PowerShell
+
+Do not change persistent Windows execution policy for the user or machine. When Codex needs to run npm.ps1 on Windows, use process-only policy:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy RemoteSigned -Command "npm.ps1 <args>"
+```
+
+Example: `powershell -NoProfile -ExecutionPolicy RemoteSigned -Command "npm.ps1 run build"`.

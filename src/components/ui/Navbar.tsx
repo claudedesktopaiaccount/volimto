@@ -149,7 +149,6 @@ export default function Navbar({ initialDays }: { initialDays: number }) {
     <header
       data-navbar-light
       className="sticky top-0 z-50 bg-surface border-b-3 border-ink"
-      style={{ viewTransitionName: "navbar" }}
     >
       <div className="mx-auto flex h-nav items-center gap-4 px-4 sm:px-6 lg:px-8">
         {/* Logo + countdown */}

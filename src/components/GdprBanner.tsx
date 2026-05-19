@@ -1,24 +1,46 @@
 "use client";
 
-import { useState } from "react";
+import { useSyncExternalStore } from "react";
 import Link from "next/link";
 import { getConsentStatus, setConsent } from "@/lib/consent";
 
+const CONSENT_CHANGE_EVENT = "volimto-consent-change";
+
+function subscribeToConsentChange(callback: () => void) {
+  window.addEventListener("storage", callback);
+  window.addEventListener(CONSENT_CHANGE_EVENT, callback);
+
+  return () => {
+    window.removeEventListener("storage", callback);
+    window.removeEventListener(CONSENT_CHANGE_EVENT, callback);
+  };
+}
+
+function getConsentBannerSnapshot() {
+  return getConsentStatus() === null;
+}
+
+function getServerConsentBannerSnapshot() {
+  return false;
+}
+
 export default function GdprBanner() {
-  const [visible, setVisible] = useState(() =>
-    typeof window !== "undefined" && getConsentStatus() === null
+  const visible = useSyncExternalStore(
+    subscribeToConsentChange,
+    getConsentBannerSnapshot,
+    getServerConsentBannerSnapshot
   );
 
   if (!visible) return null;
 
   function handleAccept() {
     setConsent("accepted");
-    setVisible(false);
+    window.dispatchEvent(new Event(CONSENT_CHANGE_EVENT));
   }
 
   function handleReject() {
     setConsent("rejected");
-    setVisible(false);
+    window.dispatchEvent(new Event(CONSENT_CHANGE_EVENT));
   }
 
   return (

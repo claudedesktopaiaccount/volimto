@@ -32,7 +32,7 @@ test.describe("Tipovanie (Voting)", () => {
 
   test("successful vote submission", async ({ page }) => {
     // Inject CSRF cookie before navigating
-    const csrfToken = await injectCsrfCookie(page);
+    await injectCsrfCookie(page);
 
     await page.goto("/tipovanie");
 
@@ -59,9 +59,9 @@ test.describe("Tipovanie (Voting)", () => {
     expect(hasResult).toBeTruthy();
   });
 
-  test("duplicate vote is blocked", async ({ page, context }) => {
-    // Inject CSRF + visitor cookies
-    const csrfToken = await injectCsrfCookie(page);
+  test("duplicate vote is blocked", async ({ page }) => {
+    // Inject CSRF cookie
+    await injectCsrfCookie(page);
 
     await page.goto("/tipovanie");
 

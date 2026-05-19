@@ -1,5 +1,5 @@
 import { scrapeWikipediaPolls, type RawPollRow } from "./scraper/wikipedia";
-import { PARTIES, PARTY_LIST } from "./parties";
+import { PARTY_LIST } from "./parties";
 import type { Database } from "./db";
 import { polls, pollResults } from "./db/schema";
 import { desc, eq } from "drizzle-orm";

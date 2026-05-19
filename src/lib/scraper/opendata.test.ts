@@ -81,7 +81,7 @@ describe("scrapeRpvsCompanies", () => {
   ]);
 
   it("parses JSON array and returns ScrapedCompany[]", async () => {
-    const fetcher = async (_url: string) => mockJson;
+    const fetcher = async () => mockJson;
     const result = await scrapeRpvsCompanies(10, fetcher);
 
     expect(result).toHaveLength(2);
@@ -95,13 +95,13 @@ describe("scrapeRpvsCompanies", () => {
   });
 
   it("respects limit parameter", async () => {
-    const fetcher = async (_url: string) => mockJson;
+    const fetcher = async () => mockJson;
     const result = await scrapeRpvsCompanies(1, fetcher);
     expect(result).toHaveLength(1);
   });
 
   it("returns [] and warns when fetcher throws", async () => {
-    const fetcher = async (_url: string): Promise<string> => {
+    const fetcher = async (): Promise<string> => {
       throw new Error("network error");
     };
     const result = await scrapeRpvsCompanies(10, fetcher);
@@ -109,13 +109,13 @@ describe("scrapeRpvsCompanies", () => {
   });
 
   it("returns [] when response is not JSON", async () => {
-    const fetcher = async (_url: string) => "not json at all";
+    const fetcher = async () => "not json at all";
     const result = await scrapeRpvsCompanies(10, fetcher);
     expect(result).toEqual([]);
   });
 
   it("returns [] when JSON is not an array", async () => {
-    const fetcher = async (_url: string) => JSON.stringify({ error: "oops" });
+    const fetcher = async () => JSON.stringify({ error: "oops" });
     const result = await scrapeRpvsCompanies(10, fetcher);
     expect(result).toEqual([]);
   });
@@ -126,7 +126,7 @@ describe("scrapeRpvsCompanies", () => {
       { Ico: "99999999", ObchodneMeno: "" },
       { Ico: "11111111", ObchodneMeno: "Valid firm" },
     ]);
-    const fetcher = async (_url: string) => json;
+    const fetcher = async () => json;
     const result = await scrapeRpvsCompanies(10, fetcher);
     expect(result).toHaveLength(1);
     expect(result[0].ico).toBe("11111111");
@@ -143,7 +143,7 @@ const mockCsv = [
 
 describe("scrapePublicContracts", () => {
   it("parses CSV and returns ScrapedContract[]", async () => {
-    const fetcher = async (_url: string) => mockCsv;
+    const fetcher = async () => mockCsv;
     const result = await scrapePublicContracts(10, fetcher);
 
     expect(result).toHaveLength(2);
@@ -158,19 +158,19 @@ describe("scrapePublicContracts", () => {
   });
 
   it("second row has null contractNumber", async () => {
-    const fetcher = async (_url: string) => mockCsv;
+    const fetcher = async () => mockCsv;
     const result = await scrapePublicContracts(10, fetcher);
     expect(result[1].contractNumber).toBeNull();
   });
 
   it("respects limit parameter", async () => {
-    const fetcher = async (_url: string) => mockCsv;
+    const fetcher = async () => mockCsv;
     const result = await scrapePublicContracts(1, fetcher);
     expect(result).toHaveLength(1);
   });
 
   it("returns [] and warns when fetcher throws", async () => {
-    const fetcher = async (_url: string): Promise<string> => {
+    const fetcher = async (): Promise<string> => {
       throw new Error("timeout");
     };
     const result = await scrapePublicContracts(10, fetcher);
@@ -178,7 +178,7 @@ describe("scrapePublicContracts", () => {
   });
 
   it("returns [] when CSV has no data rows", async () => {
-    const fetcher = async (_url: string) =>
+    const fetcher = async () =>
       "ID;ZmluvaCislo;Predmet;DodavatelICO;DatumZverejnenia";
     const result = await scrapePublicContracts(10, fetcher);
     expect(result).toEqual([]);
@@ -190,7 +190,7 @@ describe("scrapePublicContracts", () => {
       ";; ;; ; ;01.01.2023;https://x", // empty title and ico → skip
       "2;X;Valid title;55555555;Good firm;100,00;02.02.2023;https://y",
     ].join("\n");
-    const fetcher = async (_url: string) => csv;
+    const fetcher = async () => csv;
     const result = await scrapePublicContracts(10, fetcher);
     expect(result).toHaveLength(1);
     expect(result[0].titleSk).toBe("Valid title");

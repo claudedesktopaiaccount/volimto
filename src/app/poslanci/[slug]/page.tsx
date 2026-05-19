@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { getDb } from "@/lib/db";
 import {
   getMpBySlug,
@@ -120,7 +121,7 @@ export default async function MpDetailPage({
         {/* Portrait */}
         <div className="shrink-0">
           {mp.photoUrl ? (
-            <img
+            <Image
               src={mp.photoUrl}
               alt={mp.nameDisplay}
               width={80}

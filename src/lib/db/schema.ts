@@ -743,6 +743,25 @@ export const mpOffices = pgTable(
   ]
 );
 
+export const mpActivityScrapeState = pgTable(
+  "mp_activity_scrape_state",
+  {
+    id: serial("id").primaryKey(),
+    mpId: integer("mp_id").notNull().references(() => mps.id, { onDelete: "cascade" }),
+    lastAttemptAt: text("last_attempt_at"),
+    lastSuccessAt: text("last_success_at"),
+    nextEligibleAt: text("next_eligible_at"),
+    failCount: integer("fail_count").notNull().default(0),
+    lastError: text("last_error"),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("mp_activity_state_mp_unique").on(table.mpId),
+    index("mp_activity_state_next_idx").on(table.nextEligibleAt),
+    index("mp_activity_state_success_idx").on(table.lastSuccessAt),
+  ]
+);
+
 // Contracts — Public procurement contracts (UVO/EKS/CRZ)
 
 export const contracts = pgTable(

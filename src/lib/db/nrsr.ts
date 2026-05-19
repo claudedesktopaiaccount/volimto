@@ -12,7 +12,7 @@ import {
   mpAssistants,
   mpOffices,
 } from "./schema";
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import type {
   ScrapedMp,
   ScrapedVote,
@@ -22,6 +22,10 @@ import type {
 } from "@/lib/scraper/nrsr";
 
 const CHUNK = 50;
+
+function excluded(columnName: string) {
+  return sql.raw(`excluded.${columnName}`);
+}
 
 /**
  * Manual NRSR person ID → internal party ID overrides.
@@ -163,14 +167,14 @@ export async function upsertMps(
       .onConflictDoUpdate({
         target: mps.slug,
         set: {
-          nameFull: mps.nameFull,
-          nameDisplay: mps.nameDisplay,
-          partyId: mps.partyId,
-          role: mps.role,
-          constituency: mps.constituency,
-          birthYear: mps.birthYear,
-          photoUrl: mps.photoUrl,
-          nrsrPersonId: mps.nrsrPersonId,
+          nameFull: excluded(mps.nameFull.name),
+          nameDisplay: excluded(mps.nameDisplay.name),
+          partyId: excluded(mps.partyId.name),
+          role: excluded(mps.role.name),
+          constituency: excluded(mps.constituency.name),
+          birthYear: excluded(mps.birthYear.name),
+          photoUrl: excluded(mps.photoUrl.name),
+          nrsrPersonId: excluded(mps.nrsrPersonId.name),
         },
       })
       .returning({ id: mps.id });
@@ -217,15 +221,15 @@ export async function upsertVotes(
       .onConflictDoUpdate({
         target: votes.nrsrVoteId,
         set: {
-          date: votes.date,
-          titleSk: votes.titleSk,
-          topicCategory: votes.topicCategory,
-          result: votes.result,
-          votesFor: votes.votesFor,
-          votesAgainst: votes.votesAgainst,
-          votesAbstain: votes.votesAbstain,
-          votesAbsent: votes.votesAbsent,
-          sourceUrl: votes.sourceUrl,
+          date: excluded(votes.date.name),
+          titleSk: excluded(votes.titleSk.name),
+          topicCategory: excluded(votes.topicCategory.name),
+          result: excluded(votes.result.name),
+          votesFor: excluded(votes.votesFor.name),
+          votesAgainst: excluded(votes.votesAgainst.name),
+          votesAbstain: excluded(votes.votesAbstain.name),
+          votesAbsent: excluded(votes.votesAbsent.name),
+          sourceUrl: excluded(votes.sourceUrl.name),
         },
       })
       .returning({ id: votes.id, nrsrVoteId: votes.nrsrVoteId });
@@ -270,7 +274,7 @@ export async function upsertVotes(
       .values(batch)
       .onConflictDoUpdate({
         target: [voteRecords.voteId, voteRecords.mpId],
-        set: { choice: voteRecords.choice },
+        set: { choice: excluded(voteRecords.choice.name) },
       })
       .returning({ id: voteRecords.id });
 

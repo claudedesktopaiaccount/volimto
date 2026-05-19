@@ -11,9 +11,7 @@ test.describe("Homepage", () => {
     const hero = page.locator("main");
     await expect(hero).toBeVisible();
 
-    // Should display party cards (at least 5 parties)
-    const partyCards = page.locator('[class*="party"], [class*="PartyCard"]');
-    // Fallback: look for party names in the page
+    // Should display party names in the page
     const pageText = await page.textContent("body");
     expect(pageText).toContain("Smer");
     expect(pageText).toContain("PS");

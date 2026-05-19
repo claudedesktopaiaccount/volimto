@@ -90,8 +90,12 @@ export default function PollTrendChart({ data, parties }: PollTrendChartProps) {
   );
 
   return (
-    <div className="w-full max-w-[980px] mx-auto aspect-[4/3] min-h-[300px] max-h-[560px] sm:aspect-[16/10] lg:aspect-[16/9]">
-      <ResponsiveContainer width="100%" height="100%">
+    <div className="w-full max-w-[980px] mx-auto">
+      <ResponsiveContainer
+        width="100%"
+        height={420}
+        minWidth={0}
+      >
         <LineChart data={data} margin={{ top: 10, right: 20, left: -10, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--divider)" />
           <XAxis

@@ -106,6 +106,17 @@ export const PARTIES: Record<string, Party> = {
     ideology: "Národný konzervativizmus, populizmus",
     portraitUrl: "/portraits/sns-danko.jpg",
   },
+  vidieka: {
+    id: "vidieka",
+    name: "Strana vidieka",
+    abbreviation: "VIDIEK",
+    color: "#4F7D2A",
+    secondaryColor: "#D9B44A",
+    leader: "Rudolf Huliak",
+    deputyLeaders: [],
+    seats: 3,
+    ideology: "Regionálna politika, vidiek, poľnohospodárstvo",
+  },
   demokrati: {
     id: "demokrati",
     name: "Demokrati",

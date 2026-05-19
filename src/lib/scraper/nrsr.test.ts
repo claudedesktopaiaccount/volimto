@@ -11,6 +11,7 @@ import {
   scrapeMps,
   scrapeRecentVotes,
   scrapeRecentSpeeches,
+  parseRetryAfterMs,
 } from "./nrsr";
 
 // ─── makeSlug ─────────────────────────────────────────────
@@ -85,6 +86,25 @@ describe("mapChoice", () => {
   it("handles lowercase z", () => expect(mapChoice("z")).toBe("za"));
 });
 
+describe("parseRetryAfterMs", () => {
+  it("parses seconds", () => {
+    expect(parseRetryAfterMs("120", 1_000)).toBe(120_000);
+  });
+
+  it("parses HTTP date", () => {
+    expect(
+      parseRetryAfterMs(
+        "Tue, 19 May 2026 10:05:00 GMT",
+        Date.parse("Tue, 19 May 2026 10:00:00 GMT")
+      )
+    ).toBe(300_000);
+  });
+
+  it("returns null for invalid values", () => {
+    expect(parseRetryAfterMs("later", 1_000)).toBeNull();
+  });
+});
+
 // ─── parseMpList ──────────────────────────────────────────
 
 const MP_LIST_HTML = `
@@ -136,6 +156,23 @@ describe("parseMpList", () => {
     expect(fico!.partyAbbr).toBe("SMER");
   });
 
+  it("parses current alphabetical NRSR link list layout", () => {
+    const html = `
+      <ul>
+        <li><a href="Default.aspx?sid=poslanci/poslanec&PoslanecID=1180&CisObdobia=9">Bajo Holečková, Martina</a></li>
+        <li><a href="Default.aspx?sid=poslanci/poslanec&PoslanecID=871&CisObdobia=9">Baláž, Vladimír</a></li>
+      </ul>
+    `;
+    const result = parseMpList(html);
+    expect(result).toHaveLength(2);
+    expect(result[0]).toMatchObject({
+      nrsrPersonId: "1180",
+      nameDisplay: "Martina Bajo Holečková",
+      slug: "martina-bajo-holeckova",
+      partyAbbr: null,
+    });
+  });
+
   it("returns empty array for empty HTML", () => {
     expect(parseMpList("<html><body></body></html>")).toEqual([]);
   });
@@ -174,9 +211,9 @@ describe("parseVoteIds", () => {
 
   it("deduplicates IDs", () => {
     const html = `
-      <a href="?ID=100">A</a>
-      <a href="?ID=100">B</a>
-      <a href="?ID=101">C</a>
+      <a href="/web/Default.aspx?sid=schodze/hlasovanie/hlasovanie&ID=100">A</a>
+      <a href="/web/Default.aspx?sid=schodze/hlasovanie/hlasovanie&ID=100">B</a>
+      <a href="/web/Default.aspx?sid=schodze/hlasovanie/hlasovanie&ID=101">C</a>
     `;
     const ids = parseVoteIds(html, 10);
     expect(ids.filter((id) => id === "100").length).toBe(1);
@@ -243,6 +280,40 @@ describe("parseVoteDetail", () => {
     expect(dankoRecord!.choice).toBe("zdržal_sa");
   });
 
+  it("parses current grouped NRSR vote detail layout", () => {
+    const html = `
+      <body>
+        <h1>Hlasovanie</h1>
+        <p>Dátum a čas 7. 5. 2026 11:30</p>
+        <p>Názov hlasovania Hlasovanie o procedurálnom návrhu predsedu NR SR R. Rašiho. Výsledok hlasovania Návrh prešiel Prítomní 129</p>
+        <p>[Z] Za hlasovalo 78 [P] Proti hlasovalo 51 [?] Zdržalo sa hlasovania 0 [N] Nehlasovalo 0 [0] Neprítomní 21</p>
+        <table class="hpo_result_table">
+          <tr><td>Za</td></tr>
+          <tr>
+            <td><a href="Default.aspx?sid=poslanci/poslanec&PoslanecID=871&CisObdobia=9">Baláž, Vladimír</a></td>
+            <td><a href="Default.aspx?sid=poslanci/poslanec&PoslanecID=1207&CisObdobia=9">Bartek, Michal</a></td>
+          </tr>
+          <tr><td>Proti</td></tr>
+          <tr><td><a href="Default.aspx?sid=poslanci/poslanec&PoslanecID=1114&CisObdobia=9">Šimečka, Michal</a></td></tr>
+          <tr><td>Neprítomní</td></tr>
+          <tr><td><a href="Default.aspx?sid=poslanci/poslanec&PoslanecID=1115&CisObdobia=9">Truban, Michal</a></td></tr>
+        </table>
+      </body>
+    `;
+    const { vote, records } = parseVoteDetail(html, "57960", sourceUrl);
+    expect(vote!.votesFor).toBe(78);
+    expect(vote!.votesAgainst).toBe(51);
+    expect(vote!.votesAbsent).toBe(21);
+    expect(vote!.result).toBe("schválené");
+    expect(vote!.titleSk).toContain("procedurálnom návrhu");
+    expect(records).toEqual([
+      { nrsrVoteId: "57960", nrsrPersonId: "871", choice: "za" },
+      { nrsrVoteId: "57960", nrsrPersonId: "1207", choice: "za" },
+      { nrsrVoteId: "57960", nrsrPersonId: "1114", choice: "proti" },
+      { nrsrVoteId: "57960", nrsrPersonId: "1115", choice: "neprítomný" },
+    ]);
+  });
+
   it("all records have correct nrsrVoteId", () => {
     const { records } = parseVoteDetail(VOTE_DETAIL_HTML, "51234", sourceUrl);
     for (const r of records) {
@@ -305,13 +376,27 @@ describe("parseSpeechesList", () => {
 
 describe("scrapeMps — fetcher injection", () => {
   it("returns parsed MPs from mock fetcher", async () => {
-    const fetcher = async (_url: string) => MP_LIST_HTML;
+    const fetcher = async () => MP_LIST_HTML;
     const result = await scrapeMps(fetcher);
     expect(result.length).toBeGreaterThanOrEqual(3);
   });
 
+  it("falls back when the first NRSR list endpoint times out", async () => {
+    const calls: string[] = [];
+    const fetcher = async (url: string): Promise<string> => {
+      calls.push(url);
+      if (url.includes("zoznam_abc")) throw new DOMException("timeout", "TimeoutError");
+      return MP_LIST_HTML;
+    };
+
+    const result = await scrapeMps(fetcher);
+    expect(calls[0]).toContain("zoznam_abc");
+    expect(calls[1]).toContain("zoznam_adv");
+    expect(result.length).toBeGreaterThanOrEqual(3);
+  });
+
   it("returns empty array on network error", async () => {
-    const fetcher = async (_url: string): Promise<string> => {
+    const fetcher = async (): Promise<string> => {
       throw new Error("network error");
     };
     const result = await scrapeMps(fetcher);
@@ -322,8 +407,8 @@ describe("scrapeMps — fetcher injection", () => {
 describe("scrapeRecentVotes — fetcher injection", () => {
   it("returns votes and records from mock fetcher", async () => {
     const fetcher = async (url: string) => {
-      if (url.includes("zoznam")) return VOTE_LIST_HTML;
-      return VOTE_DETAIL_HTML;
+      if (url.includes("hlasovanie&ID")) return VOTE_DETAIL_HTML;
+      return VOTE_LIST_HTML;
     };
     const { votes, records } = await scrapeRecentVotes(3, fetcher);
     expect(votes.length).toBeGreaterThan(0);
@@ -331,7 +416,7 @@ describe("scrapeRecentVotes — fetcher injection", () => {
   });
 
   it("returns empty on network error", async () => {
-    const fetcher = async (_url: string): Promise<string> => {
+    const fetcher = async (): Promise<string> => {
       throw new Error("network error");
     };
     const { votes, records } = await scrapeRecentVotes(10, fetcher);
@@ -342,13 +427,13 @@ describe("scrapeRecentVotes — fetcher injection", () => {
 
 describe("scrapeRecentSpeeches — fetcher injection", () => {
   it("returns speeches from mock fetcher", async () => {
-    const fetcher = async (_url: string) => SPEECHES_HTML;
+    const fetcher = async () => SPEECHES_HTML;
     const result = await scrapeRecentSpeeches(10, fetcher);
     expect(result.length).toBeGreaterThanOrEqual(2);
   });
 
   it("returns empty on network error", async () => {
-    const fetcher = async (_url: string): Promise<string> => {
+    const fetcher = async (): Promise<string> => {
       throw new Error("network error");
     };
     const result = await scrapeRecentSpeeches(10, fetcher);

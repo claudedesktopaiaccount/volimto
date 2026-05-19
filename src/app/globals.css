@@ -167,6 +167,7 @@ h1, h2, h3 {
 
 /* Navbar always light — override dark theme tokens within header */
 [data-navbar-light] {
+  view-transition-name: navbar;
   --bg-page: #f8f5f0;
   --bg-card: #ffffff;
   --bg-subtle: #f0ede6;

@@ -1,4 +1,4 @@
-import { allocateSeats, type SeatAllocation } from "./dhondt";
+import { allocateSeats } from "./dhondt";
 
 const SIMULATIONS = 10_000;
 

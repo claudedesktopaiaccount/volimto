@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { polls, pollResults, parties } from "@/lib/db/schema";
-import { desc, eq, inArray } from "drizzle-orm";
+import { desc, inArray } from "drizzle-orm";
 import { lookupApiKey } from "@/lib/api-keys/keys";
 import { checkAndIncrement } from "@/lib/api-keys/rate-limit";
 
