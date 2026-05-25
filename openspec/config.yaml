@@ -1,0 +1,28 @@
+schema: intent-driven
+
+context: |
+  Product: Polis, a Slovak political tracker for polls, predictions, coalition
+  simulations, crowd predictions, MP data, and news aggregation.
+  Stack: Next.js 16 App Router, React 19, TypeScript, TailwindCSS 4,
+  Recharts 3, Neon Postgres, Drizzle ORM, Cheerio, Vitest 4, ESLint 9,
+  and Vercel.
+  Conventions:
+    - User-facing UI text is Slovak.
+    - Server components are the default; use "use client" only when needed.
+    - Database changes go through Drizzle schema and migrations.
+    - Use Context7 before changing code that depends on framework or library
+      APIs listed in AGENTS.md.
+    - Preserve existing AGENTS.md and HANDOFF.md project memory.
+
+rules:
+  proposal:
+    - Must use grill-me skill
+    - Keep proposals concise and explicit about capabilities affected.
+  design:
+    - Must use c4-diagrams skill
+    - Include trade-offs for data, scraping, caching, privacy, and deployment
+      decisions when relevant.
+  adr:
+    - Must use architectural-decision-records skill
+  spec:
+    - Must use gherkin-authoring skill

@@ -62,7 +62,14 @@ export interface SpeechRow {
   id: number;
   date: string;
   titleSk: string | null;
+  textSk: string;
   excerpt: string | null;
+  sourceUrl: string | null;
+  cleanTitleSk: string | null;
+  speechType: string | null;
+  summarySk: string | null;
+  keyPointsSk: string | null;
+  summaryStatus: string;
 }
 
 export interface CompanyRow {
@@ -81,6 +88,17 @@ export interface ContractRow {
   supplierIco: string;
   amountEur: number;
   signedDate: string;
+}
+
+export interface MpDetailOverview {
+  speeches: SpeechRow[];
+  speechTotal: number;
+  interpellations: InterpellationRow[];
+  interpellationTotal: number;
+  companies: CompanyRow[];
+  contractPreview: ContractRow[];
+  contractTotal: number;
+  contractTotalAmount: number;
 }
 
 export interface PromiseRow {
@@ -235,7 +253,14 @@ export async function getMpSpeeches(
       id: speeches.id,
       date: speeches.date,
       titleSk: speeches.titleSk,
+      textSk: speeches.textSk,
       excerpt: sql<string>`substr(${speeches.textSk}, 1, 300)`,
+      sourceUrl: speeches.sourceUrl,
+      cleanTitleSk: speeches.cleanTitleSk,
+      speechType: speeches.speechType,
+      summarySk: speeches.summarySk,
+      keyPointsSk: speeches.keyPointsSk,
+      summaryStatus: speeches.summaryStatus,
     })
     .from(speeches)
     .where(eq(speeches.mpId, mpId))
@@ -317,6 +342,29 @@ export async function getMpContracts(
 }
 
 // ─── 7. getMpPartyPromises — promises for a party ────────────────────────────
+
+export async function getMpDetailOverview(
+  db: Database,
+  mpId: number
+): Promise<MpDetailOverview> {
+  const [speechData, interpellationData, companyRows, contractData] = await Promise.all([
+    getMpSpeeches(db, mpId, { pageSize: 3 }),
+    getMpInterpellations(db, mpId, { pageSize: 3 }),
+    getMpCompanies(db, mpId),
+    getMpContracts(db, mpId, { pageSize: 3 }),
+  ]);
+
+  return {
+    speeches: speechData.speeches,
+    speechTotal: speechData.total,
+    interpellations: interpellationData.rows,
+    interpellationTotal: interpellationData.total,
+    companies: companyRows,
+    contractPreview: contractData.contracts,
+    contractTotal: contractData.total,
+    contractTotalAmount: contractData.totalAmount,
+  };
+}
 
 export async function getMpPartyPromises(
   db: Database,

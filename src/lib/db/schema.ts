@@ -458,10 +458,18 @@ export const speeches = pgTable(
     textSk: text("text_sk").notNull(),
     sourceUrl: text("source_url").notNull(),
     nrsrSpeechId: text("nrsr_speech_id"),
+    cleanTitleSk: text("clean_title_sk"),
+    speechType: text("speech_type"),
+    summarySk: text("summary_sk"),
+    keyPointsSk: text("key_points_sk"),
+    summaryStatus: text("summary_status").notNull().default("pending"),
+    summaryModel: text("summary_model"),
+    summarizedAt: text("summarized_at"),
   },
   (table) => [
     index("speeches_mp_id_idx").on(table.mpId),
     index("speeches_date_idx").on(table.date),
+    index("speeches_summary_status_idx").on(table.summaryStatus),
     uniqueIndex("speeches_nrsr_speech_id_unique").on(table.nrsrSpeechId),
   ]
 );
@@ -557,6 +565,44 @@ export const scandalSources = pgTable(
   },
   (table) => [
     index("scandal_sources_scandal_id_idx").on(table.scandalId),
+    uniqueIndex("scandal_sources_unique").on(table.scandalId, table.url),
+  ]
+);
+
+// Scandal Claims - source-backed statements shown in the evidence map
+
+export const scandalClaims = pgTable(
+  "scandal_claims",
+  {
+    id: serial("id").primaryKey(),
+    scandalId: integer("scandal_id").notNull().references(() => scandals.id),
+    mpId: integer("mp_id").references(() => mps.id),
+    targetLabel: text("target_label").notNull(),
+    claimKind: text("claim_kind").notNull(),
+    processStatus: text("process_status").notNull(),
+    responsibilityKind: text("responsibility_kind").notNull(),
+    statementSk: text("statement_sk").notNull(),
+    counterpointSk: text("counterpoint_sk"),
+    sortOrder: integer("sort_order").notNull().default(0),
+  },
+  (table) => [
+    index("scandal_claims_scandal_id_idx").on(table.scandalId),
+    index("scandal_claims_mp_id_idx").on(table.mpId),
+    index("scandal_claims_process_status_idx").on(table.processStatus),
+  ]
+);
+
+export const scandalClaimSources = pgTable(
+  "scandal_claim_sources",
+  {
+    id: serial("id").primaryKey(),
+    claimId: integer("claim_id").notNull().references(() => scandalClaims.id),
+    sourceId: integer("source_id").notNull().references(() => scandalSources.id),
+  },
+  (table) => [
+    index("scandal_claim_sources_claim_id_idx").on(table.claimId),
+    index("scandal_claim_sources_source_id_idx").on(table.sourceId),
+    uniqueIndex("scandal_claim_sources_unique").on(table.claimId, table.sourceId),
   ]
 );
 

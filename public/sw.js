@@ -1,5 +1,7 @@
 const CACHE_NAME = "volimto-v1";
 const STATIC_CACHE = "volimto-static-v1";
+const DEV_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
+const IS_DEV_HOST = DEV_HOSTS.has(self.location.hostname);
 
 const STATIC_PATTERNS = [
   /^\/_next\/static\//,
@@ -31,9 +33,11 @@ self.addEventListener("activate", (event) => {
       .keys()
       .then((keys) =>
         Promise.all(
-          keys
-            .filter((k) => k !== CACHE_NAME && k !== STATIC_CACHE)
-            .map((k) => caches.delete(k))
+          keys.map((k) => {
+            if (IS_DEV_HOST) return caches.delete(k);
+            if (k !== CACHE_NAME && k !== STATIC_CACHE) return caches.delete(k);
+            return Promise.resolve(false);
+          })
         )
       )
       .then(() => self.clients.claim())
@@ -41,6 +45,8 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
+  if (IS_DEV_HOST) return;
+
   const { request } = event;
   const url = new URL(request.url);
 

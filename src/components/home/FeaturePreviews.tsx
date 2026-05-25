@@ -65,7 +65,7 @@ export function PredikciaMini({ bars, pollCount }: { bars: MiniPartyBar[]; pollC
   return (
     <div
       ref={ref}
-      className="flex items-center justify-center p-3"
+      className="flex h-full w-full items-center justify-center p-3"
       onMouseEnter={() => {
         setHovered(true);
         setDisplayed(bars.map(() => 0));
@@ -73,7 +73,7 @@ export function PredikciaMini({ bars, pollCount }: { bars: MiniPartyBar[]; pollC
       }}
       onMouseLeave={() => setHovered(false)}
     >
-      <div className="w-[205px] border border-ink/80 bg-card px-4 py-3 shadow-[3px_3px_0_rgba(17,17,16,0.08)]">
+      <div className="w-full max-w-[245px] rounded-md border border-border bg-card/90 px-4 py-3 shadow-sm">
         <div className="mb-3 text-[10px] font-semibold tracking-[0.12em] text-muted">
           MONTE CARLO · {pollCount || "—"} PRIESKUMOV
         </div>
@@ -110,9 +110,9 @@ export function PredikciaMini({ bars, pollCount }: { bars: MiniPartyBar[]; pollC
                   >
                     {b.label}
                   </span>
-                  <div className="h-2 flex-1 overflow-hidden bg-subtle">
+                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-subtle">
                     <div
-                      className="h-full"
+                      className="h-full rounded-full"
                       style={{
                         width: `${displayed[i] ?? 0}%`,
                         background: b.color,
@@ -176,14 +176,14 @@ export function SimulatorMini({ seats }: { seats: MiniSeatSlice[] }) {
   return (
     <div
       ref={ref}
-      className="flex items-center justify-center p-3"
+      className="flex h-full w-full items-center justify-center p-3"
       onMouseEnter={() => {
         setHovered(true);
         setRunId((n) => n + 1);
       }}
       onMouseLeave={() => setHovered(false)}
     >
-      <div className="w-[205px] border border-ink/80 bg-card px-3 py-3 shadow-[3px_3px_0_rgba(17,17,16,0.08)]">
+      <div className="w-full max-w-[255px] rounded-md border border-border bg-card/90 px-4 py-3 shadow-sm">
         <div className="mb-2 flex items-center justify-between text-[10px] font-semibold tracking-[0.12em] text-muted">
           <span>MANDÁTY</span>
           <span className="tabular-nums text-ink">{totalSeats}/150</span>
@@ -275,11 +275,11 @@ export function PrieskumyMini({
 
   return (
     <div
-      className="flex items-center justify-center p-3"
+      className="flex h-full w-full items-center justify-center p-3"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div className="w-[205px] border border-ink/80 bg-card px-4 py-3 shadow-[3px_3px_0_rgba(17,17,16,0.08)]">
+      <div className="w-full max-w-[245px] rounded-md border border-border bg-card/90 px-4 py-3 shadow-sm">
         <div className="mb-3 truncate text-[10px] font-semibold tracking-[0.12em] text-muted">
           {agency} · {date}
         </div>

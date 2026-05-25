@@ -8,6 +8,7 @@ import {
   getMpSpeeches,
   getMpCompanies,
   getMpContracts,
+  getMpDetailOverview,
   getMpActivityStats,
   getMpLegislation,
   getMpAmendments,
@@ -16,6 +17,7 @@ import {
 } from "@/lib/db/mps";
 import MpTabs from "./MpTabs";
 import MpActivityStrip from "./MpActivityStats";
+import MpActivityOverview from "./MpActivityOverview";
 import VotingTab from "./tabs/VotingTab";
 import SpeechesTab from "./tabs/SpeechesTab";
 import LegislationTab from "./tabs/LegislationTab";
@@ -80,7 +82,10 @@ export default async function MpDetailPage({
   let companiesData: Awaited<ReturnType<typeof getMpCompanies>> | null = null;
   let contractsData: Awaited<ReturnType<typeof getMpContracts>> | null = null;
 
-  const stats = await getMpActivityStats(db, mp.id);
+  const [stats, overview] = await Promise.all([
+    getMpActivityStats(db, mp.id),
+    getMpDetailOverview(db, mp.id),
+  ]);
 
   if (activeTab === "hlasovanie") {
     votesData = await getMpVotes(db, mp.id, { page });
@@ -172,6 +177,8 @@ export default async function MpDetailPage({
 
       {/* Aktivita stat strip */}
       <MpActivityStrip stats={stats} />
+
+      <MpActivityOverview overview={overview} mpSlug={slug} />
 
       {/* Tabs nav (client component) */}
       <MpTabs activeTab={activeTab} mpSlug={slug} />

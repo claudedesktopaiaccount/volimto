@@ -3,6 +3,7 @@ import { revalidateTag } from "next/cache";
 import { and, asc, eq, isNotNull, isNull, lte, or, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { upsertMpActivities } from "@/lib/db/nrsr";
+import { summarizePendingSpeechDigests } from "@/lib/db/speech-digests";
 import { mpActivityScrapeState, mps } from "@/lib/db/schema";
 import { isCronAuthed } from "@/lib/cron-auth";
 import {
@@ -136,6 +137,7 @@ export async function GET(req: NextRequest) {
       mpId: number;
       nrsrPersonId: string | null;
       counts?: Awaited<ReturnType<typeof upsertMpActivities>>;
+      digests?: Awaited<ReturnType<typeof summarizePendingSpeechDigests>>;
       error?: string;
       nextEligibleAt?: string;
     }[] = [];
@@ -149,8 +151,13 @@ export async function GET(req: NextRequest) {
       try {
         const activities = await scrapeMpActivities(mp.nrsrPersonId);
         const counts = await upsertMpActivities(db, mp.id, activities);
+        const digests = await summarizePendingSpeechDigests(db, {
+          apiKey: process.env.GEMINI_API_KEY,
+          mpId: mp.id,
+          limit: 3,
+        });
         await recordSuccess(db, mp.id, Date.now());
-        results.push({ mpId: mp.id, nrsrPersonId: mp.nrsrPersonId, counts });
+        results.push({ mpId: mp.id, nrsrPersonId: mp.nrsrPersonId, counts, digests });
       } catch (error) {
         const retryAfterMs = isNrsrRateLimitError(error) ? error.retryAfterMs : undefined;
         await recordFailure(db, mp.id, mp.failCount ?? 0, error, retryAfterMs);

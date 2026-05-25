@@ -16,6 +16,7 @@
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+/.playwright-cli/
 
 # next.js
 /.next/
@@ -64,6 +65,12 @@ stitch-prompts.md
 
 # superpowers plugin cache
 .superpowers/
+
+# opencode local dependencies
+.opencode/node_modules/
+
+# openspec local cache
+openspec/.cache/
 
 # external reference directories
 edmunds-claude-code/

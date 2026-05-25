@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { DM_Sans, DM_Serif_Display } from "next/font/google";
 import { cookies } from "next/headers";
+import Script from "next/script";
 import "./globals.css";
 import Navbar from "@/components/ui/Navbar";
 import Footer from "@/components/ui/Footer";
@@ -52,7 +53,9 @@ export const metadata: Metadata = {
   },
 };
 
-const SW_REGISTRATION_SCRIPT = `if('serviceWorker'in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js').catch(function(){});})}`;
+const SW_REGISTRATION_SCRIPT = `if('serviceWorker'in navigator){var register=function(){navigator.serviceWorker.register('/sw.js').catch(function(){});};if(document.readyState==='complete'){register();}else{window.addEventListener('load',register,{once:true});}}`;
+const SW_DEV_CLEANUP_SCRIPT = `if('serviceWorker'in navigator){navigator.serviceWorker.getRegistrations().then(function(registrations){registrations.forEach(function(registration){registration.unregister();});}).catch(function(){});}if('caches'in window){caches.keys().then(function(keys){keys.forEach(function(key){caches.delete(key);});}).catch(function(){});}`;
+const SHOULD_REGISTER_SERVICE_WORKER = process.env.NODE_ENV === "production";
 
 function getInitialDaysUntilElection(): number {
   return Math.ceil((ELECTION_DATE_ESTIMATE.getTime() - Date.now()) / 86_400_000);
@@ -76,10 +79,6 @@ export default async function RootLayout({
       <head>
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#111110" />
-        {/* Service worker registration — static string, no user input */}
-        <script
-          dangerouslySetInnerHTML={{ __html: SW_REGISTRATION_SCRIPT }}
-        />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -120,6 +119,19 @@ export default async function RootLayout({
             <PageNumber />
             <GdprBanner />
             <UmamiAnalytics />
+            {SHOULD_REGISTER_SERVICE_WORKER ? (
+              <Script
+                id="service-worker-registration"
+                strategy="afterInteractive"
+                dangerouslySetInnerHTML={{ __html: SW_REGISTRATION_SCRIPT }}
+              />
+            ) : (
+              <Script
+                id="service-worker-dev-cleanup"
+                strategy="beforeInteractive"
+                dangerouslySetInnerHTML={{ __html: SW_DEV_CLEANUP_SCRIPT }}
+              />
+            )}
           </AuthProvider>
         </ThemeProvider>
       </body>

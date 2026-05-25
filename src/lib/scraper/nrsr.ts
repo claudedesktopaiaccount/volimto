@@ -755,20 +755,53 @@ function parseGroupedVoteRecords(
 
 const SPEECHES_URL = `${BASE_URL}/web/Default.aspx?CisObdobia=9&ShowTopItems=True&sid=schodze/rozprava/vyhladavanie`;
 
+function mpSpeechesUrl(nrsrPersonId: string, term: number): string {
+  const params = new URLSearchParams({
+    CisObdobia: String(term),
+    ShowTopItems: "True",
+    sid: "schodze/rozprava/vyhladavanie",
+    PoslanecID: nrsrPersonId,
+  });
+  return `${BASE_URL}/web/Default.aspx?${params.toString()}`;
+}
+
 export async function scrapeRecentSpeeches(
   limit: number = 50,
   fetcher: Fetcher = defaultFetcher
 ): Promise<ScrapedSpeech[]> {
   try {
     const html = await fetcher(SPEECHES_URL);
-    return parseSpeechesList(html, limit);
+    return parseSpeechesList(html, limit, SPEECHES_URL);
   } catch (err) {
     console.error("[nrsr] scrapeRecentSpeeches error:", err);
     return [];
   }
 }
 
-export function parseSpeechesList(html: string, limit: number): ScrapedSpeech[] {
+export async function scrapeMpSpeeches(
+  nrsrPersonId: string,
+  term: number = 9,
+  limit: number = 50,
+  fetcher: Fetcher = defaultFetcher
+): Promise<ScrapedSpeech[]> {
+  try {
+    const url = mpSpeechesUrl(nrsrPersonId, term);
+    const html = await fetcher(url);
+    return parseSpeechesList(html, limit, url).filter(
+      (speech) => speech.nrsrPersonId === nrsrPersonId
+    );
+  } catch (err) {
+    if (isNrsrRateLimitError(err)) throw err;
+    console.error(`[nrsr] scrapeMpSpeeches ${nrsrPersonId} error:`, err);
+    return [];
+  }
+}
+
+export function parseSpeechesList(
+  html: string,
+  limit: number,
+  fallbackSourceUrl: string = SPEECHES_URL
+): ScrapedSpeech[] {
   const $ = cheerio.load(html);
   const speeches: ScrapedSpeech[] = [];
   const seen = new Set<string>();
@@ -789,7 +822,7 @@ export function parseSpeechesList(html: string, limit: number): ScrapedSpeech[] 
       .first();
 
     if (!$personLink.length && !$speechLink.length && personIdByName.size > 0) {
-      const fallback = parseSpeechRowWithoutLinks($row, personIdByName);
+      const fallback = parseSpeechRowWithoutLinks($row, personIdByName, fallbackSourceUrl);
       if (!fallback) return;
       if (seen.has(fallback.nrsrSpeechId)) return;
       seen.add(fallback.nrsrSpeechId);
@@ -847,11 +880,11 @@ export function parseSpeechesList(html: string, limit: number): ScrapedSpeech[] 
 
     if (!textSk) textSk = rowText.trim().slice(0, 500);
 
-    const sourceUrl = speechHref
+    const speechSourceUrl = speechHref
       ? speechHref.startsWith("http")
         ? speechHref
         : `${BASE_URL}${speechHref}`
-      : `${SPEECHES_URL}`;
+      : fallbackSourceUrl;
 
     speeches.push({
       nrsrSpeechId,
@@ -859,7 +892,7 @@ export function parseSpeechesList(html: string, limit: number): ScrapedSpeech[] 
       date,
       titleSk,
       textSk,
-      sourceUrl,
+      sourceUrl: speechSourceUrl,
     });
   });
 
@@ -878,7 +911,8 @@ function parsePersonOptionMap($: cheerio.CheerioAPI): Map<string, string> {
 
 function parseSpeechRowWithoutLinks(
   $row: cheerio.Cheerio<AnyNode>,
-  personIdByName: Map<string, string>
+  personIdByName: Map<string, string>,
+  sourceUrl: string
 ): ScrapedSpeech | null {
   const rowText = cleanText($row.text());
   if (!rowText) return null;
@@ -909,7 +943,7 @@ function parseSpeechRowWithoutLinks(
     date,
     titleSk: rowText.slice(0, 200),
     textSk,
-    sourceUrl: SPEECHES_URL,
+    sourceUrl,
   };
 }
 
@@ -962,6 +996,7 @@ export interface ScrapedOffice {
 }
 
 export interface ScrapedMpActivities {
+  speeches: ScrapedSpeech[];
   interpellations: ScrapedInterpellation[];
   questions: ScrapedQuestion[];
   legislation: ScrapedLegislationItem[];
@@ -972,6 +1007,7 @@ export interface ScrapedMpActivities {
 }
 
 const MP_ACTIVITY_URLS = (personId: string, term: number) => ({
+  speeches: mpSpeechesUrl(personId, term),
   interpellations: `${BASE_URL}/web/Default.aspx?sid=schodze/interpelacie_result&ZadavatelId=${personId}&CisObdobia=${term}`,
   questions:      `${BASE_URL}/web/Default.aspx?sid=schodze/ho_result&AssignerId=${personId}&CisObdobia=${term}`,
   legislation:    `${BASE_URL}/web/Default.aspx?sid=zakony/sslp&PredkladatelID=0&PredkladatelPoslanecId=${personId}&CisObdobia=${term}`,
@@ -1176,6 +1212,9 @@ export async function scrapeMpActivities(
     }
   };
   // Sequential to be polite
+  const speeches = await safe("speeches",
+    async () => scrapeMpSpeeches(nrsrPersonId, term, 50, fetcher), []);
+  await sleep(400);
   const interpellations = await safe("interpellations",
     async () => parseInterpellationsList(await fetcher(urls.interpellations)), []);
   await sleep(400);
@@ -1201,7 +1240,7 @@ export async function scrapeMpActivities(
   const offices = await safe("offices",
     async () => parseOfficesList(await fetcher(urls.offices)), []);
 
-  return { interpellations, questions, legislation, amendments, trips, assistants, offices };
+  return { speeches, interpellations, questions, legislation, amendments, trips, assistants, offices };
 }
 
 function sleep(ms: number): Promise<void> {

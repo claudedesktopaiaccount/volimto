@@ -315,6 +315,7 @@ export async function upsertSpeeches(
         textSk: s.textSk,
         sourceUrl: s.sourceUrl,
         nrsrSpeechId: s.nrsrSpeechId,
+        summaryStatus: "pending",
       };
     })
     .filter(
@@ -327,6 +328,7 @@ export async function upsertSpeeches(
         textSk: string;
         sourceUrl: string;
         nrsrSpeechId: string;
+        summaryStatus: string;
       } => s !== null
     );
 
@@ -349,6 +351,7 @@ export async function upsertSpeeches(
 // ─── MP Activities upserts ────────────────────────────────
 
 export interface UpsertActivitiesCounts {
+  speeches: number;
   interpellations: number;
   questions: number;
   legislation: number;
@@ -370,9 +373,36 @@ export async function upsertMpActivities(
 ): Promise<UpsertActivitiesCounts> {
   const now = new Date().toISOString();
   const counts: UpsertActivitiesCounts = {
-    interpellations: 0, questions: 0, legislation: 0,
+    speeches: 0, interpellations: 0, questions: 0, legislation: 0,
     amendments: 0, trips: 0, assistants: 0, offices: 0,
   };
+
+  if (activities.speeches.length > 0) {
+    const rows = activities.speeches.map((s) => ({
+      mpId,
+      date: s.date,
+      titleSk: s.titleSk ?? null,
+      textSk: s.textSk,
+      sourceUrl: s.sourceUrl,
+      nrsrSpeechId: s.nrsrSpeechId,
+      summaryStatus: "pending",
+    }));
+    for (const batch of chunks(rows, CHUNK)) {
+      const r = await db.insert(speeches).values(batch)
+        .onConflictDoUpdate({
+          target: speeches.nrsrSpeechId,
+          set: {
+            mpId: excluded(speeches.mpId.name),
+            date: excluded(speeches.date.name),
+            titleSk: excluded(speeches.titleSk.name),
+            textSk: excluded(speeches.textSk.name),
+            sourceUrl: excluded(speeches.sourceUrl.name),
+          },
+        })
+        .returning({ id: speeches.id });
+      counts.speeches += r.length;
+    }
+  }
 
   if (activities.interpellations.length > 0) {
     const rows = activities.interpellations.map((i) => ({

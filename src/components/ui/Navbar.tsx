@@ -13,6 +13,7 @@ type NavLink = { href: string; label: string };
 const PRIMARY_LINKS: NavLink[] = [
   { href: "/prieskumy", label: "Prieskumy" },
   { href: "/predikcia", label: "Predikcia" },
+  { href: "/kauzy", label: "Kauzy" },
   { href: "/poslanci", label: "Poslanci" },
   { href: "/koalicny-simulator", label: "Koaličný simulátor" },
   { href: "/tipovanie", label: "Tipovanie" },
@@ -148,6 +149,7 @@ export default function Navbar({ initialDays }: { initialDays: number }) {
   return (
     <header
       data-navbar-light
+      style={{ viewTransitionName: "navbar" }}
       className="sticky top-0 z-50 bg-surface border-b-3 border-ink"
     >
       <div className="mx-auto flex h-nav items-center gap-4 px-4 sm:px-6 lg:px-8">

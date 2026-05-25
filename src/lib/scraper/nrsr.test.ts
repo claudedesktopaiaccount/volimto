@@ -11,6 +11,7 @@ import {
   scrapeMps,
   scrapeRecentVotes,
   scrapeRecentSpeeches,
+  scrapeMpSpeeches,
   parseRetryAfterMs,
 } from "./nrsr";
 
@@ -29,6 +30,31 @@ describe("makeSlug", () => {
 
   it("trims leading/trailing dashes", () => {
     expect(makeSlug("  Fico  ")).toBe("fico");
+  });
+});
+
+describe("scrapeMpSpeeches fetcher injection", () => {
+  it("returns only speeches for the requested MP", async () => {
+    const calls: string[] = [];
+    const fetcher = async (url: string) => {
+      calls.push(url);
+      return SPEECHES_HTML;
+    };
+
+    const result = await scrapeMpSpeeches("802", 9, 10, fetcher);
+
+    expect(calls[0]).toContain("PoslanecID=802");
+    expect(result).toHaveLength(1);
+    expect(result[0].nrsrPersonId).toBe("802");
+    expect(result[0].nrsrSpeechId).toBe("9002");
+  });
+
+  it("returns empty on network error", async () => {
+    const fetcher = async (): Promise<string> => {
+      throw new Error("network error");
+    };
+    const result = await scrapeMpSpeeches("802", 9, 10, fetcher);
+    expect(result).toEqual([]);
   });
 });
 

@@ -9,6 +9,7 @@ import "dotenv/config";
 import { asc, isNotNull } from "drizzle-orm";
 import { getDb } from "../src/lib/db";
 import { upsertMpActivities } from "../src/lib/db/nrsr";
+import { summarizePendingSpeechDigests } from "../src/lib/db/speech-digests";
 import { mps } from "../src/lib/db/schema";
 import { scrapeMpActivities } from "../src/lib/scraper/nrsr";
 
@@ -36,8 +37,9 @@ async function main() {
   console.log(`Scraping MP activities: ${mode}, ${selectedMps.length}/${allMps.length} MPs...`);
 
   const totals = {
-    interpellations: 0, questions: 0, legislation: 0,
+    speeches: 0, interpellations: 0, questions: 0, legislation: 0,
     amendments: 0, trips: 0, assistants: 0, offices: 0,
+    digests: 0,
     errors: 0,
   };
 
@@ -48,6 +50,12 @@ async function main() {
     try {
       const activities = await scrapeMpActivities(mp.nrsrPersonId);
       const counts = await upsertMpActivities(db, mp.id, activities);
+      const digests = await summarizePendingSpeechDigests(db, {
+        apiKey: process.env.GEMINI_API_KEY,
+        mpId: mp.id,
+        limit: 5,
+      });
+      totals.speeches += counts.speeches;
       totals.interpellations += counts.interpellations;
       totals.questions += counts.questions;
       totals.legislation += counts.legislation;
@@ -55,12 +63,14 @@ async function main() {
       totals.trips += counts.trips;
       totals.assistants += counts.assistants;
       totals.offices += counts.offices;
+      totals.digests += digests.processed;
 
       console.log(
         `[${absoluteIndex + 1}/${allMps.length}] ${mp.nameDisplay} -> ` +
-        `int:${counts.interpellations} q:${counts.questions} ` +
+        `sp:${counts.speeches} int:${counts.interpellations} q:${counts.questions} ` +
         `leg:${counts.legislation} am:${counts.amendments} ` +
-        `trip:${counts.trips} asst:${counts.assistants} off:${counts.offices}`
+        `trip:${counts.trips} asst:${counts.assistants} off:${counts.offices} ` +
+        `dig:${digests.processed}`
       );
     } catch (e) {
       totals.errors++;

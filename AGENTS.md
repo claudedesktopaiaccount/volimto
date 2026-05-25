@@ -109,6 +109,21 @@ Haven't looked up docs this session → stop, use context7 first.
 - `/db-migrate` — Generate and apply Drizzle database migrations
 - `/caveman` — ALWAYS invoke at session start to activate caveman compression mode (saves tokens)
 
+### OpenSpec / OpenCode
+- Use the intent-driven OpenSpec schema for proposal -> specs -> design -> ADR -> tasks workflows.
+- For OpenSpec propose/apply/verify/archive workflows, use the local `openspec-git-discipline` skill to enforce proposal commits before apply and merge-before-archive discipline.
+- OpenSpec artifact rules live in `openspec/config.yaml`; follow the configured local skills for grill-me review, Gherkin specs, C4 design, and ADR authoring.
+- Do not require the user to run `/opsx:*` commands or terminal commands for normal OpenSpec work. Treat natural-language requests as skill triggers and run the required OpenSpec CLI commands internally.
+- Natural-language triggers:
+  - "explore", "think through", "shape this" -> use `openspec-explore`.
+  - "start a change", "new change", "make a spec" -> use `openspec-new-change` or `openspec-propose`.
+  - "propose this", "create the proposal/spec/design/tasks" -> use `openspec-propose`.
+  - "continue", "next artifact", "fill in the spec/design/ADR/tasks" -> use `openspec-continue-change`.
+  - "implement this", "apply it", "build it", "work the tasks" -> use `openspec-apply-change`.
+  - "verify", "validate", "is this ready?" -> use `openspec-verify-change`.
+  - "sync specs" -> use `openspec-sync-specs`.
+  - "archive", "finalize", "close this change" -> use `openspec-archive-change`.
+
 ### Subagents
 - `security-reviewer` — Audits credential handling, scraping safety, input sanitization
 

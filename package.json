@@ -13,8 +13,10 @@
     "db:setup": "npm run db:push && npm run db:seed",
     "db:seed": "tsx scripts/seed-parties.ts && tsx scripts/seed-nrsr.ts",
     "db:seed:nrsr": "tsx scripts/seed-nrsr.ts",
+    "db:seed:scandals": "tsx scripts/seed-scandals.ts --limit=80",
     "db:seed:mp-activities": "tsx scripts/backfill-mp-activities.ts --limit=20",
     "db:backfill:mp-activities": "tsx scripts/backfill-mp-activities.ts --all",
+    "speech:digests": "tsx scripts/backfill-speech-digests.ts",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
@@ -29,6 +31,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.96.0",
+    "@google/genai": "^2.5.0",
     "@neondatabase/serverless": "^1.0.2",
     "cheerio": "^1.2.0",
     "drizzle-orm": "^0.45.1",
