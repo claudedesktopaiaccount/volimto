@@ -569,6 +569,27 @@ export const scandalSources = pgTable(
   ]
 );
 
+// Scandal Events - source-backed timeline entries for process progression
+
+export const scandalEvents = pgTable(
+  "scandal_events",
+  {
+    id: serial("id").primaryKey(),
+    scandalId: integer("scandal_id").notNull().references(() => scandals.id),
+    eventDate: text("event_date").notNull(),
+    titleSk: text("title_sk").notNull(),
+    descriptionSk: text("description_sk").notNull(),
+    eventType: text("event_type").notNull(),
+    sourceUrl: text("source_url").notNull(),
+    sortOrder: integer("sort_order").notNull().default(0),
+  },
+  (table) => [
+    index("scandal_events_scandal_id_idx").on(table.scandalId),
+    index("scandal_events_date_idx").on(table.eventDate),
+    uniqueIndex("scandal_events_unique").on(table.scandalId, table.eventDate, table.titleSk, table.sourceUrl),
+  ]
+);
+
 // Scandal Claims - source-backed statements shown in the evidence map
 
 export const scandalClaims = pgTable(
@@ -582,6 +603,9 @@ export const scandalClaims = pgTable(
     processStatus: text("process_status").notNull(),
     responsibilityKind: text("responsibility_kind").notNull(),
     statementSk: text("statement_sk").notNull(),
+    whyRelevantSk: text("why_relevant_sk"),
+    evidenceExcerptSk: text("evidence_excerpt_sk"),
+    sourceType: text("source_type"),
     counterpointSk: text("counterpoint_sk"),
     sortOrder: integer("sort_order").notNull().default(0),
   },
@@ -607,6 +631,30 @@ export const scandalClaimSources = pgTable(
 );
 
 // Companies — Companies from RPVS, FinStat
+
+// Scandal Analysis Drafts - web/AI generated review queue before public publishing
+
+export const scandalAnalysisDrafts = pgTable(
+  "scandal_analysis_drafts",
+  {
+    id: serial("id").primaryKey(),
+    scandalId: integer("scandal_id").notNull().references(() => scandals.id),
+    caseSummarySk: text("case_summary_sk").notNull(),
+    publicInterestSk: text("public_interest_sk").notNull(),
+    legalStatusSk: text("legal_status_sk").notNull(),
+    openQuestionsSk: text("open_questions_sk").notNull(),
+    actorClaimsJson: text("actor_claims_json").notNull(),
+    sourceUrlsJson: text("source_urls_json").notNull(),
+    reviewStatus: text("review_status").notNull().default("needs_review"),
+    model: text("model").notNull(),
+    createdAt: text("created_at").notNull(),
+    reviewedAt: text("reviewed_at"),
+  },
+  (table) => [
+    index("scandal_analysis_drafts_scandal_id_idx").on(table.scandalId),
+    index("scandal_analysis_drafts_status_idx").on(table.reviewStatus),
+  ]
+);
 
 export const companies = pgTable(
   "companies",

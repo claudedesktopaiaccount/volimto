@@ -906,10 +906,23 @@ function ClaimList({
           <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted">
             {claim.subjectName} · {claim.claimKind}
           </p>
+          {claim.whyRelevant && (
+            <p className="mt-2 text-sm leading-relaxed text-ink">{claim.whyRelevant}</p>
+          )}
           <p className="mt-2 text-sm leading-relaxed text-ink">{claim.statement}</p>
+          {claim.evidenceExcerpt && (
+            <p className="mt-2 border-l-2 border-ink pl-3 text-xs leading-relaxed text-secondary">
+              {claim.evidenceExcerpt}
+            </p>
+          )}
           {claim.counterpoint && (
             <p className="mt-2 border-l border-border pl-3 text-xs leading-relaxed text-secondary">
               {claim.counterpoint}
+            </p>
+          )}
+          {claim.sourceType && (
+            <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.12em] text-muted">
+              Typ zdroja: {claim.sourceType}
             </p>
           )}
           {claim.sources.length > 0 && (

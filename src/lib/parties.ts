@@ -115,6 +115,7 @@ export const PARTIES: Record<string, Party> = {
     leader: "Rudolf Huliak",
     deputyLeaders: [],
     seats: 3,
+    portraitUrl: "/portraits/minister-rudolf-huliak.png",
     ideology: "Regionálna politika, vidiek, poľnohospodárstvo",
   },
   demokrati: {

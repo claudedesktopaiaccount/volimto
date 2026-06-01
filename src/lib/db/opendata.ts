@@ -1,5 +1,5 @@
 import type { Database } from "./index";
-import { companies, contracts, donations, mps, politicianCompanyLinks } from "./schema";
+import { companies, contracts, donations, mps, parties, politicianCompanyLinks } from "./schema";
 import { and, eq, gte, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import type {
   ScrapedCompany,
@@ -24,6 +24,22 @@ function chunks<T>(arr: T[], size: number): T[][] {
 
 function normalizeIco(ico: string): string {
   return ico.replace(/\D/g, "");
+}
+
+function donationKey(item: {
+  partyId: string;
+  donorName: string;
+  donorIco: string | null;
+  amountEur: number;
+  donationDate: string;
+}): string {
+  return [
+    item.partyId,
+    item.donorName.trim().toLowerCase(),
+    item.donorIco ?? "",
+    item.amountEur,
+    item.donationDate,
+  ].join("|");
 }
 
 export function isContractDateWithinVerifiedLink(
@@ -57,8 +73,16 @@ export async function upsertCompanies(
 ): Promise<number> {
   if (!items.length) return 0;
   let count = 0;
+  const deduped = [
+    ...new Map(
+      items
+        .map((item) => ({ ...item, ico: normalizeIco(item.ico) }))
+        .filter((item) => item.ico && item.name)
+        .map((item) => [item.ico, item] as const)
+    ).values(),
+  ];
 
-  for (const batch of chunks(items, CHUNK)) {
+  for (const batch of chunks(deduped, CHUNK)) {
     const values = batch.map((c) => ({
       ico: c.ico,
       name: c.name,
@@ -76,10 +100,10 @@ export async function upsertCompanies(
       .onConflictDoUpdate({
         target: companies.ico,
         set: {
-          name: companies.name,
-          legalForm: companies.legalForm,
-          rpvsUboUrl: companies.rpvsUboUrl,
-          addressSk: companies.addressSk,
+          name: excluded(companies.name.name),
+          legalForm: excluded(companies.legalForm.name),
+          rpvsUboUrl: excluded(companies.rpvsUboUrl.name),
+          addressSk: excluded(companies.addressSk.name),
         },
       })
       .returning({ id: companies.id });
@@ -227,8 +251,26 @@ export async function upsertContracts(
 ): Promise<number> {
   if (!items.length) return 0;
   let count = 0;
+  const deduped = [
+    ...new Map(
+      items
+        .map((item) => ({ ...item, supplierIco: normalizeIco(item.supplierIco) }))
+        .filter((item) => item.titleSk && item.supplierIco && item.signedDate && item.sourceUrl)
+        .map((item) => [item.sourceUrl, item] as const)
+    ).values(),
+  ];
+  if (!deduped.length) return 0;
 
-  for (const batch of chunks(items, CHUNK)) {
+  const existingRows = await db
+    .select({ sourceUrl: contracts.sourceUrl })
+    .from(contracts)
+    .where(inArray(contracts.sourceUrl, deduped.map((item) => item.sourceUrl)));
+  const existingUrls = new Set(existingRows.map((row) => row.sourceUrl));
+
+  for (const batch of chunks(
+    deduped.filter((item) => !existingUrls.has(item.sourceUrl)),
+    CHUNK
+  )) {
     const values = batch.map((c) => ({
       contractNumber: c.contractNumber ?? null,
       titleSk: c.titleSk,
@@ -266,8 +308,43 @@ export async function upsertDonations(
 ): Promise<number> {
   if (!items.length) return 0;
   let count = 0;
+  const deduped = [
+    ...new Map(
+      items
+        .filter((item) => item.partyId && item.donorName && item.donationDate)
+        .map((item) => [donationKey(item), item] as const)
+    ).values(),
+  ];
+  if (!deduped.length) return 0;
 
-  for (const batch of chunks(items, CHUNK)) {
+  const partyRows = await db
+    .select({ id: parties.id })
+    .from(parties)
+    .where(inArray(parties.id, [...new Set(deduped.map((item) => item.partyId))]));
+  const validPartyIds = new Set(partyRows.map((party) => party.id));
+  const validItems = deduped.filter((item) => validPartyIds.has(item.partyId));
+  const skipped = deduped.length - validItems.length;
+  if (skipped > 0) {
+    console.warn(`[db/opendata] skipped ${skipped} donations with unknown party_id`);
+  }
+  if (!validItems.length) return 0;
+
+  const existingRows = await db
+    .select({
+      partyId: donations.partyId,
+      donorName: donations.donorName,
+      donorIco: donations.donorIco,
+      amountEur: donations.amountEur,
+      donationDate: donations.donationDate,
+    })
+    .from(donations)
+    .where(inArray(donations.partyId, [...new Set(validItems.map((item) => item.partyId))]));
+  const existingKeys = new Set(existingRows.map((item) => donationKey(item)));
+
+  for (const batch of chunks(
+    validItems.filter((item) => !existingKeys.has(donationKey(item))),
+    CHUNK
+  )) {
     const values = batch.map((d) => ({
       partyId: d.partyId,
       donorName: d.donorName,

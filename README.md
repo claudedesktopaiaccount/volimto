@@ -1,10 +1,10 @@
-# Polis
+# VolimTo
 
 Nezávislý agregátor volebných prieskumov a predikcií slovenských parlamentných volieb.
 
-**Live:** https://polis.sk
+**Live:** https://volimto.sk
 
-## Čo Polis robí
+## Čo VolimTo robí
 
 - Agreguje volebné prieskumy z Wikipedie (automatický scraper)
 - Monte Carlo simulácia rozdelenia mandátov (10 000 iterácií)

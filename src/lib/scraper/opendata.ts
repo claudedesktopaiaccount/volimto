@@ -1,7 +1,11 @@
-// ─── RPVS + OpenData scraper ─────────────────────────────────────────────────
+// RPVS + OpenData scraper
 // Serverless compatible: no Node.js fs/path/Buffer APIs.
 
+import * as cheerio from "cheerio";
+import type { AnyNode } from "domhandler";
+
 export type Fetcher = (url: string) => Promise<string>;
+export type BinaryFetcher = (url: string) => Promise<ArrayBuffer>;
 
 const USER_AGENT = "Mozilla/5.0 (compatible; VolimTo/1.0; +https://volimto.sk)";
 const TIMEOUT_MS = 20_000;
@@ -19,7 +23,20 @@ async function defaultFetcher(url: string): Promise<string> {
   return r.text();
 }
 
-// ─── Types ────────────────────────────────────────────────
+async function defaultBinaryFetcher(url: string): Promise<ArrayBuffer> {
+  const r = await fetch(url, {
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+    headers: { "User-Agent": USER_AGENT },
+  });
+  if (!r.ok) {
+    const retryable = [429, 503, 504].includes(r.status);
+    console.warn(`[scraper/opendata] HTTP ${r.status} from ${url} (${retryable ? "retryable" : "permanent"})`);
+    throw new Error(`HTTP ${r.status}`);
+  }
+  return r.arrayBuffer();
+}
+
+// Types
 
 export interface ScrapedCompany {
   ico: string;
@@ -36,31 +53,29 @@ export interface ScrapedContract {
   supplierIco: string;
   supplierName: string;
   amountEur: number;
-  signedDate: string; // ISO date
+  signedDate: string;
   cpvCode: string | null;
   sourceUrl: string;
 }
 
 export interface ScrapedDonation {
-  partyId: string; // maps to parties.id
+  partyId: string;
   donorName: string;
   donorIco: string | null;
   amountEur: number;
-  donationDate: string; // ISO date
+  donationDate: string;
   sourceUrl: string;
 }
 
-// ─── Helpers ──────────────────────────────────────────────
+// Helpers
 
 /**
- * Parse Slovak number format: "1 234,56" → 1234.56
+ * Parse Slovak number format: "1 234,56" -> 1234.56
  * Also handles plain "1234.56" and "1234,56".
  */
 export function parseSlovakNumber(raw: string): number {
   if (!raw || !raw.trim()) return 0;
-  // Remove spaces (thousands separator in SK format)
   const stripped = raw.trim().replace(/\s/g, "");
-  // Replace comma decimal separator with dot
   const normalized = stripped.replace(/,/g, ".");
   const n = parseFloat(normalized);
   return isNaN(n) ? 0 : n;
@@ -95,117 +110,264 @@ export function parseCsvLine(line: string, delimiter: ";" | ","): string[] {
   return fields;
 }
 
-// ─── RPVS Companies ───────────────────────────────────────
+function getObjectValue(item: Record<string, unknown>, names: string[]): unknown {
+  for (const name of names) {
+    if (item[name] !== undefined && item[name] !== null) return item[name];
+  }
+  return null;
+}
 
-const RPVS_URL = "https://rpvs.gov.sk/OpenData/Partneri";
+function normalizeIco(raw: unknown): string {
+  return String(raw ?? "").replace(/\D/g, "");
+}
+
+function parseIsoishDate(raw: string): string | null {
+  const trimmed = raw.trim();
+  const dateMatch = trimmed.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+  if (dateMatch) return `${dateMatch[3]}-${dateMatch[2]}-${dateMatch[1]}`;
+  if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) return trimmed.slice(0, 10);
+  return null;
+}
+
+// RPVS Companies
+
+const RPVS_URL = "https://rpvs.gov.sk/opendatav2/PartneriVerejnehoSektora";
+
+function buildRpvsDetailUrl(item: Record<string, unknown>): string | null {
+  const explicit = getObjectValue(item, ["Url", "url"]);
+  if (explicit) return String(explicit).trim();
+
+  const id = getObjectValue(item, ["Id", "id"]);
+  if (!id) return null;
+  return `https://rpvs.gov.sk/rpvs/Partner/Partner/Detail/${String(id).trim()}`;
+}
 
 /**
  * Fetch companies from RPVS OpenData JSON endpoint.
- * Returns up to `limit` records. Returns [] on any error.
+ * Returns up to `limit` records. Returns partial results on later-page errors.
  */
 export async function scrapeRpvsCompanies(
   limit: number,
   fetcher?: Fetcher
 ): Promise<ScrapedCompany[]> {
   const fetch_ = fetcher ?? defaultFetcher;
-
-  let raw: string;
-  try {
-    raw = await fetch_(RPVS_URL);
-  } catch (err) {
-    console.warn("[scraper/opendata] RPVS fetch failed:", err);
-    return [];
-  }
-
-  let data: unknown;
-  try {
-    data = JSON.parse(raw);
-  } catch (err) {
-    console.warn("[scraper/opendata] RPVS JSON parse failed:", err);
-    return [];
-  }
-
-  if (!Array.isArray(data)) {
-    console.warn("[scraper/opendata] RPVS response is not an array");
-    return [];
-  }
-
   const results: ScrapedCompany[] = [];
+  const seenIcos = new Set<string>();
+  let url: string | null = RPVS_URL;
 
-  for (const item of data) {
-    if (results.length >= limit) break;
-    if (!item || typeof item !== "object") continue;
-
-    // RPVS JSON fields (may vary — handle both cased variants)
-    const ico: string =
-      String(item.Ico ?? item.ico ?? item.ICO ?? "").trim();
-    const name: string =
-      String(item.ObchodneMeno ?? item.obchodneMeno ?? item.name ?? "").trim();
-
-    if (!ico) {
-      console.warn("[scraper/opendata] RPVS record missing ICO, skipping:", JSON.stringify(item).slice(0, 100));
-      continue;
+  while (url && results.length < limit) {
+    let raw: string;
+    try {
+      raw = await fetch_(url);
+    } catch (err) {
+      console.warn("[scraper/opendata] RPVS fetch failed:", err);
+      return results;
     }
-    if (!name) continue;
 
-    const addressRaw =
-      item.Sidlo ?? item.sidlo ?? item.address ?? item.Address ?? null;
-    const addressSk = addressRaw ? String(addressRaw).trim() : null;
+    let data: unknown;
+    try {
+      data = JSON.parse(raw);
+    } catch (err) {
+      console.warn("[scraper/opendata] RPVS JSON parse failed:", err);
+      return results;
+    }
 
-    const urlRaw = item.Url ?? item.url ?? null;
-    const rpvsUboUrl = urlRaw ? String(urlRaw).trim() : null;
+    const records = Array.isArray(data)
+      ? data
+      : data && typeof data === "object" && Array.isArray((data as { value?: unknown }).value)
+        ? (data as { value: unknown[] }).value
+        : null;
 
-    // Derive legal form from name suffix (s.r.o., a.s., etc.)
-    let legalForm: string | null = null;
-    const legalMatch = name.match(/\b(s\.r\.o\.|a\.s\.|k\.s\.|v\.o\.s\.|š\.p\.|n\.o\.|o\.z\.)\s*$/i);
-    if (legalMatch) legalForm = legalMatch[1].toLowerCase();
+    if (!records) {
+      console.warn("[scraper/opendata] RPVS response is not an array or OData wrapper");
+      return results;
+    }
 
-    results.push({ ico, name, legalForm, rpvsUboUrl, addressSk });
+    for (const item of records) {
+      if (results.length >= limit) break;
+      if (!item || typeof item !== "object") continue;
+      const obj = item as Record<string, unknown>;
+
+      const ico = normalizeIco(getObjectValue(obj, ["Ico", "ico", "ICO"]));
+      const companyName = String(
+        getObjectValue(obj, ["ObchodneMeno", "obchodneMeno", "name"]) ?? ""
+      ).trim();
+      const personName = [
+        getObjectValue(obj, ["TitulPred"]),
+        getObjectValue(obj, ["Meno"]),
+        getObjectValue(obj, ["Priezvisko"]),
+        getObjectValue(obj, ["TitulZa"]),
+      ]
+        .filter(Boolean)
+        .map((value) => String(value).trim())
+        .filter(Boolean)
+        .join(" ");
+      const name = companyName || personName;
+
+      if (!ico) {
+        console.warn("[scraper/opendata] RPVS record missing ICO, skipping:", JSON.stringify(item).slice(0, 100));
+        continue;
+      }
+      if (!name || seenIcos.has(ico)) continue;
+
+      const addressRaw = getObjectValue(obj, ["Sidlo", "sidlo", "address", "Address"]);
+      const addressSk = addressRaw ? String(addressRaw).trim() : null;
+      const rpvsUboUrl = buildRpvsDetailUrl(obj);
+
+      let legalForm: string | null = null;
+      const legalMatch = name.match(/\b(s\.\s*r\.\s*o\.|a\.\s*s\.|k\.\s*s\.|v\.\s*o\.\s*s\.|š\.\s*p\.|n\.\s*o\.|o\.\s*z\.)\s*$/i);
+      if (legalMatch) legalForm = legalMatch[1].toLowerCase().replace(/\s+/g, "");
+
+      seenIcos.add(ico);
+      results.push({ ico, name, legalForm, rpvsUboUrl, addressSk });
+    }
+
+    url =
+      !Array.isArray(data) && data && typeof data === "object"
+        ? String((data as Record<string, unknown>)["@odata.nextLink"] ?? "").trim() || null
+        : null;
   }
 
   return results;
 }
 
-// ─── Public Contracts (CRZ CSV) ───────────────────────────
+// Public Contracts (CRZ)
 
-const CRZ_URL = "https://www.crz.gov.sk/data/crz_zmluvy.csv";
+const CRZ_LEGACY_CSV_URL = "https://www.crz.gov.sk/data/crz_zmluvy.csv";
+const CRZ_EXPORT_BASE_URL = "https://www.crz.gov.sk/export";
 
-/**
- * Fetch recent public contracts from CRZ CSV.
- * Parses first `limit` data rows. Returns [] on any error.
- *
- * Expected CSV columns (semicolon-delimited, UTF-8):
- * ID;ZmluvaCislo;Predmet;ObjednavatelNazov;ObjednavatelICO;DodavatelNazov;DodavatelICO;
- * CenaSEDPH;CenaSDPH;DatumZverejnenia;DatumPlatnosti;Url
- */
-export async function scrapePublicContracts(
-  limit: number,
-  fetcher?: Fetcher
-): Promise<ScrapedContract[]> {
-  const fetch_ = fetcher ?? defaultFetcher;
+function toIsoDate(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
 
-  let raw: string;
-  try {
-    raw = await fetch_(CRZ_URL);
-  } catch (err) {
-    console.warn("[scraper/opendata] CRZ fetch failed:", err);
-    return [];
+function previousUtcDateIso(now = new Date()): string {
+  const previous = new Date(Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate() - 1
+  ));
+  return toIsoDate(previous);
+}
+
+export function getCrzExportUrl(dateIso = previousUtcDateIso()): string {
+  return `${CRZ_EXPORT_BASE_URL}/${dateIso}.zip`;
+}
+
+async function inflateRaw(compressed: Uint8Array): Promise<string> {
+  if (typeof DecompressionStream === "undefined") {
+    throw new Error("DecompressionStream is not available in this runtime");
   }
 
+  const payload = compressed.buffer.slice(
+    compressed.byteOffset,
+    compressed.byteOffset + compressed.byteLength
+  ) as ArrayBuffer;
+  const stream = new Blob([payload]).stream().pipeThrough(
+    new DecompressionStream("deflate-raw")
+  );
+  return new Response(stream).text();
+}
+
+export async function extractFirstZipText(zipBuffer: ArrayBuffer): Promise<string> {
+  const view = new DataView(zipBuffer);
+  const bytes = new Uint8Array(zipBuffer);
+
+  if (view.byteLength < 30 || view.getUint32(0, true) !== 0x04034b50) {
+    throw new Error("Invalid ZIP file");
+  }
+
+  const flags = view.getUint16(6, true);
+  if ((flags & 0x08) !== 0) {
+    throw new Error("ZIP data descriptors are not supported");
+  }
+
+  const method = view.getUint16(8, true);
+  const compressedSize = view.getUint32(18, true);
+  const fileNameLength = view.getUint16(26, true);
+  const extraLength = view.getUint16(28, true);
+  const dataStart = 30 + fileNameLength + extraLength;
+  const dataEnd = dataStart + compressedSize;
+
+  if (dataEnd > bytes.length) {
+    throw new Error("ZIP entry exceeds archive size");
+  }
+
+  const payload = bytes.slice(dataStart, dataEnd);
+  if (method === 0) return new TextDecoder("utf-8").decode(payload);
+  if (method === 8) return inflateRaw(payload);
+  throw new Error(`Unsupported ZIP compression method ${method}`);
+}
+
+function xmlText($el: cheerio.Cheerio<AnyNode>, names: string[]): string {
+  for (const name of names) {
+    const value = $el.find(name).first().text().trim();
+    if (value) return value;
+  }
+  return "";
+}
+
+export function parseCrzExportXml(xml: string, sourceArchiveUrl: string): ScrapedContract[] {
+  const $ = cheerio.load(xml, { xml: true });
+  const results: ScrapedContract[] = [];
+
+  $("zmluva").each((_, element) => {
+    const $el = $(element);
+    const id = xmlText($el, ["ID"]);
+    const titleSk = xmlText($el, ["predmet"]);
+    const supplierIco = normalizeIco(xmlText($el, ["ico"]));
+    const supplierName = xmlText($el, ["zs2"]);
+    const signedDate = parseIsoishDate(
+      xmlText($el, ["datum", "datum_zverejnene", "datum_ucinnost"])
+    );
+
+    if (!titleSk || !supplierIco || !supplierName || !signedDate) return;
+
+    const amountEur = parseSlovakNumber(
+      xmlText($el, ["suma_zmluva", "suma_spolu"])
+    );
+    const sourceUrl = id
+      ? `https://www.crz.gov.sk/zmluva/${encodeURIComponent(id)}/`
+      : sourceArchiveUrl;
+
+    results.push({
+      contractNumber: xmlText($el, ["nazov"]) || null,
+      titleSk,
+      contractingAuthority: xmlText($el, ["zs1"]) || xmlText($el, ["ico1"]),
+      supplierIco,
+      supplierName,
+      amountEur,
+      signedDate,
+      cpvCode: null,
+      sourceUrl,
+    });
+  });
+
+  return results;
+}
+
+async function scrapeCrzZipContracts(
+  limit: number,
+  binaryFetcher: BinaryFetcher
+): Promise<ScrapedContract[]> {
+  const exportUrl = getCrzExportUrl();
+  const zip = await binaryFetcher(exportUrl);
+  const xml = await extractFirstZipText(zip);
+  return parseCrzExportXml(xml, exportUrl).slice(0, limit);
+}
+
+function parseCrzCsv(raw: string, limit: number): ScrapedContract[] {
   const lines = raw.split(/\r?\n/);
   if (lines.length < 2) {
     console.warn("[scraper/opendata] CRZ CSV has no data rows");
     return [];
   }
 
-  // Detect delimiter from header
   const header = lines[0];
   const delimiter: ";" | "," = header.includes(";") ? ";" : ",";
   const headers = parseCsvLine(header, delimiter).map((h) =>
     h.trim().toLowerCase()
   );
 
-  // Build column index map
   const col = (names: string[]): number => {
     for (const n of names) {
       const idx = headers.findIndex((h) => h.toLowerCase() === n.toLowerCase());
@@ -216,9 +378,9 @@ export async function scrapePublicContracts(
 
   const iContractNumber = col(["zmluvacislo", "cislo"]);
   const iTitle = col(["predmet"]);
-  const iAuthority = col(["objednavatelNazov", "objednavatel", "contracting"]);
+  const iAuthority = col(["objednavatelnazov", "objednavatel", "contracting"]);
   const iAuthIco = col(["objednavatelico"]);
-  const iSupplierName = col(["dodavatelNazov", "dodavatel", "supplier"]);
+  const iSupplierName = col(["dodavatelnazov", "dodavatel", "supplier"]);
   const iSupplierIco = col(["dodavatelico", "dodavateličo"]);
   const iAmount = col(["cenasdph", "cenasedph", "cena"]);
   const iDate = col(["datumzverejnenia", "datum"]);
@@ -237,10 +399,9 @@ export async function scrapePublicContracts(
     if (!line) continue;
 
     const fields = parseCsvLine(line, delimiter);
-
     const titleSk = iTitle >= 0 ? (fields[iTitle] ?? "").trim() : "";
     const supplierIco =
-      iSupplierIco >= 0 ? (fields[iSupplierIco] ?? "").trim() : "";
+      iSupplierIco >= 0 ? normalizeIco(fields[iSupplierIco] ?? "") : "";
     const supplierName =
       iSupplierName >= 0 ? (fields[iSupplierName] ?? "").trim() : "";
     const signedDateRaw =
@@ -248,14 +409,8 @@ export async function scrapePublicContracts(
 
     if (!titleSk || !supplierIco || !signedDateRaw) continue;
 
-    // Normalise date: DD.MM.YYYY → YYYY-MM-DD
-    let signedDate: string;
-    const dateMatch = signedDateRaw.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
-    if (dateMatch) {
-      signedDate = `${dateMatch[3]}-${dateMatch[2]}-${dateMatch[1]}`;
-    } else if (/^\d{4}-\d{2}-\d{2}$/.test(signedDateRaw)) {
-      signedDate = signedDateRaw; // already ISO
-    } else {
+    const signedDate = parseIsoishDate(signedDateRaw);
+    if (!signedDate) {
       console.warn(`[scraper/opendata] unexpected date format: ${signedDateRaw}, skipping row`);
       continue;
     }
@@ -263,19 +418,16 @@ export async function scrapePublicContracts(
     const amountRaw =
       iAmount >= 0 ? (fields[iAmount] ?? "").trim() : "";
     const amountEur = parseSlovakNumber(amountRaw);
-
     const contractNumber =
       iContractNumber >= 0
         ? (fields[iContractNumber] ?? "").trim() || null
         : null;
-
     const contractingAuthority =
       iAuthority >= 0
         ? (fields[iAuthority] ?? "").trim()
         : (iAuthIco >= 0 ? fields[iAuthIco] ?? "" : "");
-
     const sourceUrl =
-      iUrl >= 0 ? (fields[iUrl] ?? "").trim() || CRZ_URL : CRZ_URL;
+      iUrl >= 0 ? (fields[iUrl] ?? "").trim() || CRZ_LEGACY_CSV_URL : CRZ_LEGACY_CSV_URL;
 
     results.push({
       contractNumber,
@@ -293,7 +445,36 @@ export async function scrapePublicContracts(
   return results;
 }
 
-// ─── Known Donations (static seed) ───────────────────────
+/**
+ * Fetch recent public contracts from CRZ.
+ * Current CRZ OpenData is a daily ZIP/XML export; tests may still inject legacy CSV.
+ * Returns [] on any error.
+ */
+export async function scrapePublicContracts(
+  limit: number,
+  fetcher?: Fetcher,
+  binaryFetcher?: BinaryFetcher
+): Promise<ScrapedContract[]> {
+  if (!fetcher) {
+    try {
+      return await scrapeCrzZipContracts(limit, binaryFetcher ?? defaultBinaryFetcher);
+    } catch (err) {
+      console.warn("[scraper/opendata] CRZ ZIP fetch/parse failed:", err);
+    }
+  }
+
+  let raw: string;
+  try {
+    raw = await (fetcher ?? defaultFetcher)(CRZ_LEGACY_CSV_URL);
+  } catch (err) {
+    console.warn("[scraper/opendata] CRZ fetch failed:", err);
+    return [];
+  }
+
+  return parseCrzCsv(raw, limit);
+}
+
+// Known Donations (static seed)
 // Source: publicly available annual party financing reports (RPPOZ)
 // published by Ministry of Interior SR, years 2019-2023.
 // URLs reference the official RPPOZ search portal.
@@ -302,9 +483,8 @@ const RPPOZ_BASE = "https://www.minv.sk/?rppoz-oznamenia";
 
 export function getKnownDonations(): ScrapedDonation[] {
   return [
-    // SMER-SD
     {
-      partyId: "smer",
+      partyId: "smer-sd",
       donorName: "TIPOS, národná lotériová spoločnosť, a.s.",
       donorIco: "31340822",
       amountEur: 50000,
@@ -312,7 +492,7 @@ export function getKnownDonations(): ScrapedDonation[] {
       sourceUrl: RPPOZ_BASE,
     },
     {
-      partyId: "smer",
+      partyId: "smer-sd",
       donorName: "AGROFERT SK, s.r.o.",
       donorIco: "44682484",
       amountEur: 20000,
@@ -320,14 +500,13 @@ export function getKnownDonations(): ScrapedDonation[] {
       sourceUrl: RPPOZ_BASE,
     },
     {
-      partyId: "smer",
+      partyId: "smer-sd",
       donorName: "Juraj Blanár",
       donorIco: null,
       amountEur: 5000,
       donationDate: "2021-04-10",
       sourceUrl: RPPOZ_BASE,
     },
-    // PS
     {
       partyId: "ps",
       donorName: "Michal Truban",
@@ -352,9 +531,8 @@ export function getKnownDonations(): ScrapedDonation[] {
       donationDate: "2023-02-14",
       sourceUrl: RPPOZ_BASE,
     },
-    // HLAS
     {
-      partyId: "hlas",
+      partyId: "hlas-sd",
       donorName: "Peter Pellegrini",
       donorIco: null,
       amountEur: 25000,
@@ -362,17 +540,16 @@ export function getKnownDonations(): ScrapedDonation[] {
       sourceUrl: RPPOZ_BASE,
     },
     {
-      partyId: "hlas",
+      partyId: "hlas-sd",
       donorName: "EASTWAY, s.r.o.",
       donorIco: "52641987",
       amountEur: 30000,
       donationDate: "2022-09-30",
       sourceUrl: RPPOZ_BASE,
     },
-    // KDH
     {
       partyId: "kdh",
-      donorName: "Konferencie biskupov Slovenska",
+      donorName: "Konferencia biskupov Slovenska",
       donorIco: "00687855",
       amountEur: 8000,
       donationDate: "2020-12-01",
@@ -386,7 +563,6 @@ export function getKnownDonations(): ScrapedDonation[] {
       donationDate: "2023-03-22",
       sourceUrl: RPPOZ_BASE,
     },
-    // SNS
     {
       partyId: "sns",
       donorName: "Ján Slota",
@@ -403,7 +579,6 @@ export function getKnownDonations(): ScrapedDonation[] {
       donationDate: "2021-07-07",
       sourceUrl: RPPOZ_BASE,
     },
-    // SaS
     {
       partyId: "sas",
       donorName: "Richard Sulík",
@@ -420,9 +595,8 @@ export function getKnownDonations(): ScrapedDonation[] {
       donationDate: "2022-11-10",
       sourceUrl: RPPOZ_BASE,
     },
-    // OĽANO
     {
-      partyId: "olano",
+      partyId: "slovensko",
       donorName: "Igor Matovič",
       donorIco: null,
       amountEur: 100000,

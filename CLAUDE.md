@@ -2,7 +2,7 @@ No file path provided — compressing the pasted text directly following the ski
 
 ---
 
-# Polis
+# VolimTo
 
 Slovak political tracker — polls, predictions, coalition simulations, crowd predictions (tipovanie), news aggregation.
 

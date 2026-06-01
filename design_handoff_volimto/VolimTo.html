@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Polis — Slovenské voľby 2026</title>
+  <title>VolimTo — Slovenské voľby 2026</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800&family=DM+Serif+Display&display=swap" rel="stylesheet" />
@@ -265,7 +265,7 @@ function Nav({ page, setPage }) {
   return (
     <nav style={navStyles.nav}>
       <div style={navStyles.inner}>
-        <button style={navStyles.logo} onClick={() => setPage('home')}>Polis</button>
+        <button style={navStyles.logo} onClick={() => setPage('home')}>VolimTo</button>
         <div style={navStyles.links}>
           {navItems.map(item => (
             <button key={item.id} style={{...navStyles.link, ...(page === item.id ? navStyles.active : {})}}
@@ -326,7 +326,7 @@ function Footer({ setPage }) {
         </div>
         <div style={footerStyles.bottom}>
           <div>
-            <div style={footerStyles.copy}>© 2026 Polis</div>
+            <div style={footerStyles.copy}>© 2026 VolimTo</div>
             <div style={footerStyles.disclaimer}>Dáta z verejne dostupných prieskumov. Nezodpovedáme za presnosť predikcií.</div>
           </div>
           <div style={footerStyles.links}>
@@ -356,7 +356,7 @@ const footerStyles = {
 };
 
 function CookieBanner() {
-  const [visible, setVisible] = useState(() => !localStorage.getItem('polis_cookie_ok'));
+  const [visible, setVisible] = useState(() => !localStorage.getItem('volimto_cookie_ok'));
   if (!visible) return null;
   return (
     <div style={cookieStyles.banner}>
@@ -368,8 +368,8 @@ function CookieBanner() {
           <a href="#" style={cookieStyles.link}>Zásady cookies</a>.
         </p>
         <div style={cookieStyles.btns}>
-          <button style={cookieStyles.reject} onClick={() => { localStorage.setItem('polis_cookie_ok','0'); setVisible(false); }}>Odmietnuť</button>
-          <button style={cookieStyles.accept} onClick={() => { localStorage.setItem('polis_cookie_ok','1'); setVisible(false); }}>Prijať</button>
+          <button style={cookieStyles.reject} onClick={() => { localStorage.setItem('volimto_cookie_ok','0'); setVisible(false); }}>Odmietnuť</button>
+          <button style={cookieStyles.accept} onClick={() => { localStorage.setItem('volimto_cookie_ok','1'); setVisible(false); }}>Prijať</button>
         </div>
       </div>
     </div>
@@ -1188,7 +1188,7 @@ Object.assign(window, { Simulator });
 const { useState: useStateTip } = React;
 
 function Tipovanie() {
-  const [voted, setVoted] = useState(() => localStorage.getItem('polis_tip') || null);
+  const [voted, setVoted] = useState(() => localStorage.getItem('volimto_tip') || null);
   const [hovParty, setHovParty] = useState(null);
 
   // Simulated community votes
@@ -1197,7 +1197,7 @@ function Tipovanie() {
 
   const handleVote = (id) => {
     setVoted(id);
-    localStorage.setItem('polis_tip', id);
+    localStorage.setItem('volimto_tip', id);
   };
 
   return (
@@ -1240,7 +1240,7 @@ function Tipovanie() {
             <div style={{ padding: '12px 16px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, marginTop: 16, fontSize: 13, color: '#15803d', fontWeight: 500 }}>
               ✓ Váš tip bol zaznamenaný.{' '}
               <button style={{ background: 'none', border: 'none', color: '#15803d', textDecoration: 'underline', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}
-                onClick={() => { setVoted(null); localStorage.removeItem('polis_tip'); }}>Zmeniť tip</button>
+                onClick={() => { setVoted(null); localStorage.removeItem('volimto_tip'); }}>Zmeniť tip</button>
             </div>
           )}
         </div>
@@ -1610,11 +1610,11 @@ const planyStyles = {
 const { useState: useStateApp } = React;
 
 function App() {
-  const [page, setPage] = useState(() => localStorage.getItem('polis_page') || 'home');
+  const [page, setPage] = useState(() => localStorage.getItem('volimto_page') || 'home');
 
   const navigate = (p) => {
     setPage(p);
-    localStorage.setItem('polis_page', p);
+    localStorage.setItem('volimto_page', p);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 

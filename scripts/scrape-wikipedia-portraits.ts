@@ -18,7 +18,7 @@ import { candidates } from "../src/lib/db/schema";
 
 const PORTRAITS_DIR = path.join(process.cwd(), "public", "portraits");
 const DRY = process.argv.includes("--dry");
-const UA = "PolisBot/1.0 (https://volimto.sk; michal.tar@gmail.com)";
+const UA = "VolimToBot/1.0 (https://volimto.sk; michal.tar@gmail.com)";
 
 function normalize(s: string): string {
   return s

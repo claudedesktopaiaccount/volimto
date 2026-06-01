@@ -1,7 +1,7 @@
 schema: intent-driven
 
 context: |
-  Product: Polis, a Slovak political tracker for polls, predictions, coalition
+  Product: VolimTo, a Slovak political tracker for polls, predictions, coalition
   simulations, crowd predictions, MP data, and news aggregation.
   Stack: Next.js 16 App Router, React 19, TypeScript, TailwindCSS 4,
   Recharts 3, Neon Postgres, Drizzle ORM, Cheerio, Vitest 4, ESLint 9,

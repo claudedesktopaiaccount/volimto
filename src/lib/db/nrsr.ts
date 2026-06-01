@@ -27,6 +27,14 @@ function excluded(columnName: string) {
   return sql.raw(`excluded.${columnName}`);
 }
 
+function excludedOrExistingPartyId() {
+  return sql<string | null>`coalesce(${excluded(mps.partyId.name)}, ${mps.partyId})`;
+}
+
+function excludedOrExistingPhotoUrl() {
+  return sql<string | null>`coalesce(${excluded(mps.photoUrl.name)}, ${mps.photoUrl})`;
+}
+
 /**
  * Manual NRSR person ID → internal party ID overrides.
  * Use for MPs whose NRSR record doesn't reflect their real political affiliation
@@ -169,11 +177,14 @@ export async function upsertMps(
         set: {
           nameFull: excluded(mps.nameFull.name),
           nameDisplay: excluded(mps.nameDisplay.name),
-          partyId: excluded(mps.partyId.name),
+          // The current NRSR alphabetical list does not expose party/club in
+          // the row. Preserve the last known party instead of clobbering it
+          // with NULL; explicit independents are reconciled by the caller.
+          partyId: excludedOrExistingPartyId(),
           role: excluded(mps.role.name),
           constituency: excluded(mps.constituency.name),
           birthYear: excluded(mps.birthYear.name),
-          photoUrl: excluded(mps.photoUrl.name),
+          photoUrl: excludedOrExistingPhotoUrl(),
           nrsrPersonId: excluded(mps.nrsrPersonId.name),
         },
       })

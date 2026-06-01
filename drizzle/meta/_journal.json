@@ -1,54 +1,12 @@
 {
   "version": "7",
-  "dialect": "sqlite",
+  "dialect": "postgresql",
   "entries": [
     {
       "idx": 0,
-      "version": "6",
-      "when": 1773942597985,
-      "tag": "0000_jazzy_nuke",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "6",
-      "when": 1774310400000,
-      "tag": "0003_gdpr_audit_log",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "6",
-      "when": 1774390459304,
-      "tag": "0002_swift_virginia_dare",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "6",
-      "when": 1774419999111,
-      "tag": "0003_ancient_boomerang",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "6",
-      "when": 1774709726293,
-      "tag": "0004_right_star_brand",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "6",
-      "when": 1775379295164,
-      "tag": "0005_material_skrulls",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "6",
-      "when": 1776540406731,
-      "tag": "0006_gifted_obadiah_stane",
+      "version": "7",
+      "when": 1779973665232,
+      "tag": "0000_baseline_postgres",
       "breakpoints": true
     }
   ]

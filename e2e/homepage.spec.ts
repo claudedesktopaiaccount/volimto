@@ -5,7 +5,7 @@ test.describe("Homepage", () => {
     await page.goto("/");
 
     // Page should load without errors
-    await expect(page).toHaveTitle(/Polis/i);
+    await expect(page).toHaveTitle(/Vol.mTo/i);
 
     // Hero section should be visible
     const hero = page.locator("main");

@@ -87,7 +87,7 @@ export const KAUZY: Kauza[] = [
     oneLine:
       "Súdny proces o údajnej zločineckej skupine v bezpečnostných zložkách, medzi obžalovanými je aktívny podpredseda NR SR Tibor Gašpar.",
     summary:
-      "Očistec je jadrová kauza bývalého vedenia polície, NAKA, finančnej správy a špeciálnej prokuratúry. Podľa verejne dostupných správ obžaloba zahŕňa dvadsať skutkov a opisuje podozrenia zo zneužívania právomoci, korupcie a ovplyvňovania trestných konaní. Pre Polis je dôležitá preto, že spája bezpečnostný aparát štátu s aktívnou politickou funkciou: Tibor Gašpar je dnes podpredsedom Národnej rady SR a poslancom za Smer-SD. Kauzu treba zobrazovať so silným dôrazom na procesný stav: ide o obžalobu a súdne prejednávanie, nie o právoplatný rozsudok.",
+      "Očistec je jadrová kauza bývalého vedenia polície, NAKA, finančnej správy a špeciálnej prokuratúry. Podľa verejne dostupných správ obžaloba zahŕňa dvadsať skutkov a opisuje podozrenia zo zneužívania právomoci, korupcie a ovplyvňovania trestných konaní. Pre VolimTo je dôležitá preto, že spája bezpečnostný aparát štátu s aktívnou politickou funkciou: Tibor Gašpar je dnes podpredsedom Národnej rady SR a poslancom za Smer-SD. Kauzu treba zobrazovať so silným dôrazom na procesný stav: ide o obžalobu a súdne prejednávanie, nie o právoplatný rozsudok.",
     legalNote:
       "Obžalovaní majú prezumpciu neviny. Mapa označuje verejne uvádzané procesné postavenie a prepojenia, nie vlastné rozhodnutie o vine.",
     court: {

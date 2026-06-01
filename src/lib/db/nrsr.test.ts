@@ -1,6 +1,57 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Database } from "./index";
-import { upsertMpActivities } from "./nrsr";
+import { upsertMpActivities, upsertMps } from "./nrsr";
+
+function containsText(value: unknown, needle: string): boolean {
+  if (typeof value === "string") return value.toLowerCase().includes(needle);
+  if (Array.isArray(value)) return value.some((item) => containsText(item, needle));
+  if (value && typeof value === "object") {
+    return Object.values(value).some((item) => containsText(item, needle));
+  }
+  return false;
+}
+
+describe("upsertMps", () => {
+  it("preserves existing party and photo when the NRSR list omits them", async () => {
+    const insertBuilder = {
+      values: vi.fn().mockReturnThis(),
+      onConflictDoUpdate: vi.fn().mockReturnThis(),
+      returning: vi.fn().mockResolvedValue([{ id: 1 }]),
+    };
+    const db = {
+      insert: vi.fn().mockReturnValue(insertBuilder),
+    } as unknown as Database;
+
+    await upsertMps(
+      db,
+      [
+        {
+          nrsrPersonId: "1114",
+          slug: "michal-simecka",
+          nameFull: "Simecka Michal",
+          nameDisplay: "Michal Simecka",
+          partyAbbr: null,
+          role: "poslanec",
+          constituency: null,
+          birthYear: null,
+          photoUrl: null,
+        },
+      ],
+      { ps: "ps" },
+      new Set()
+    );
+
+    const conflictConfig = insertBuilder.onConflictDoUpdate.mock.calls[0]?.[0];
+    const partyIdSql = conflictConfig?.set.partyId as { queryChunks?: unknown[] };
+    const photoUrlSql = conflictConfig?.set.photoUrl as { queryChunks?: unknown[] };
+
+    expect(insertBuilder.values).toHaveBeenCalledWith([
+      expect.objectContaining({ partyId: null, photoUrl: null }),
+    ]);
+    expect(containsText(partyIdSql.queryChunks, "coalesce")).toBe(true);
+    expect(containsText(photoUrlSql.queryChunks, "coalesce")).toBe(true);
+  });
+});
 
 describe("upsertMpActivities", () => {
   it("stores MP speeches through conflict-safe upsert", async () => {

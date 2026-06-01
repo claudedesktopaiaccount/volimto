@@ -54,6 +54,9 @@ export interface KauzaClaim {
   id?: number;
   subjectName: string;
   statement: string;
+  whyRelevant?: string;
+  evidenceExcerpt?: string;
+  sourceType?: string;
   processStatus: string;
   responsibilityKind: string;
   claimKind: string;
@@ -124,9 +127,20 @@ export interface ScandalForUi {
     processStatus: string;
     responsibilityKind: string;
     statementSk: string;
+    whyRelevantSk: string | null;
+    evidenceExcerptSk: string | null;
+    sourceType: string | null;
     counterpointSk: string | null;
     sortOrder: number;
     sourceIds: number[];
+  }[];
+  events?: {
+    eventDate: string;
+    titleSk: string;
+    descriptionSk: string;
+    eventType: string;
+    sourceUrl: string;
+    sortOrder: number;
   }[];
 }
 
@@ -379,6 +393,16 @@ export function isClosedStatus(status: KauzaStatus) {
 }
 
 function buildTimeline(scandal: ScandalForUi): KauzaTimelineEvent[] {
+  if (scandal.events && scandal.events.length > 0) {
+    return [...scandal.events]
+      .sort((a, b) => a.eventDate.localeCompare(b.eventDate) || a.sortOrder - b.sortOrder)
+      .map((event) => ({
+        date: event.eventDate,
+        title: event.titleSk,
+        body: event.descriptionSk,
+      }));
+  }
+
   const events: KauzaTimelineEvent[] = [
     {
       date: scandal.startDate,
@@ -423,6 +447,9 @@ function buildClaims(
           id: claim.id,
           subjectName: claim.targetLabel,
           statement: claim.statementSk,
+          whyRelevant: claim.whyRelevantSk ?? undefined,
+          evidenceExcerpt: claim.evidenceExcerptSk ?? undefined,
+          sourceType: claim.sourceType ?? undefined,
           processStatus: claim.processStatus,
           responsibilityKind: claim.responsibilityKind,
           claimKind: claim.claimKind,
@@ -431,6 +458,9 @@ function buildClaims(
         };
       });
   }
+
+  // Without reviewed structured claims, do not invent actor-level evidence.
+  return [];
 
   if (scandal.actors.length === 0) {
     return [
@@ -449,7 +479,7 @@ function buildClaims(
 
   return scandal.actors.map((actor, index) => ({
     subjectName: actor.nameDisplay,
-    statement: `Podľa priložených zdrojov je ${actor.nameDisplay} v zázname uvedený ako ${humanizeRole(actor.roleInScandal)}.`,
+    statement: `${actor.nameDisplay}: reviewed structured claim required.`,
     processStatus: processStatusText(status),
     responsibilityKind: "verejne uvádzané tvrdenie",
     claimKind: "prepojenie aktéra",

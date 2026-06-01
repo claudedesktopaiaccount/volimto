@@ -1,4 +1,4 @@
-# Polis
+# VolimTo
 
 Slovak political tracker web app — polls, predictions, coalition simulations, crowd predictions (tipovanie), and political news aggregation.
 

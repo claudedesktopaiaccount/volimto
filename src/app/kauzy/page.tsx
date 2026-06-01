@@ -5,6 +5,7 @@ import { getDb } from "@/lib/db";
 import { getScandalKauzy } from "@/lib/db/scandals";
 import { KAUZY as FALLBACK_KAUZY } from "@/lib/kauzy-data";
 import { getActiveCourtKauzy, getKauzaStats, type Kauza } from "@/lib/scandals";
+import { classifyScandalSource } from "@/lib/scandals/trusted-sources";
 
 export const revalidate = 3600;
 
@@ -53,6 +54,11 @@ async function loadKauzy(): Promise<Kauza[]> {
 function normalizeFallbackKauzy(): Kauza[] {
   return FALLBACK_KAUZY.map((kauza) => ({
     ...kauza,
+    sources: kauza.sources.filter((source) => classifyScandalSource(source.url).trusted),
+    claims: kauza.claims.map((claim) => ({
+      ...claim,
+      sources: claim.sources.filter((source) => classifyScandalSource(source.url).trusted),
+    })),
     status:
       kauza.status === "active_court"
         ? "vysetruje_sa"

@@ -1,12 +1,12 @@
-# Contributing to Polis
+# Contributing to VolimTo
 
-Thank you for your interest in contributing to Polis — a civic tech project tracking Slovak politics ahead of the 2027 elections.
+Thank you for your interest in contributing to VolimTo — a civic tech project tracking Slovak politics ahead of the 2027 elections.
 
 ## Development Setup
 
 ```bash
-git clone https://github.com/<your-handle>/polis.git
-cd polis
+git clone https://github.com/<your-handle>/volimto.git
+cd volimto
 npm install
 cp .env.example .env
 # Fill in CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_DATABASE_ID, CLOUDFLARE_D1_TOKEN

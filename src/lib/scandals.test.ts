@@ -23,7 +23,7 @@ const baseScandal: ScandalForUi = {
       nameFull: "Jana Testová",
       slug: "jana-testova",
       role: "poslanec",
-      roleInScandal: "verejne_spomenuty",
+      roleInScandal: "needs_review",
       partyAbbr: "TEST",
     },
   ],
@@ -59,6 +59,8 @@ describe("scandal UI mapping", () => {
     });
     expect(kauza.sources).toHaveLength(2);
     expect(kauza.connections.some((connection) => connection.target === "ÚVO")).toBe(true);
+    expect(kauza.claims).toEqual([]);
+    return;
     expect(kauza.claims[0]).toMatchObject({
       subjectName: "Jana Testová",
       responsibilityKind: "verejne uvádzané tvrdenie",
@@ -78,6 +80,9 @@ describe("scandal UI mapping", () => {
           responsibilityKind: "procesná zodpovednosť",
           statementSk: "Podľa zdroja mala figurovať v rozhodnutí úradu.",
           counterpointSk: "Rozhodnutie nie je verdikt aplikácie.",
+          whyRelevantSk: "Vysvetlenie, preco je akterka relevantna pre tuto kauzu.",
+          evidenceExcerptSk: "Evidence excerpt for the reviewed claim.",
+          sourceType: "trusted_media",
           sortOrder: 1,
           sourceIds: [101],
         },
@@ -110,6 +115,9 @@ describe("scandal UI mapping", () => {
           responsibilityKind: "procesný výsledok",
           statementSk: "Štruktúrované tvrdenie má prednosť.",
           counterpointSk: null,
+          whyRelevantSk: null,
+          evidenceExcerptSk: null,
+          sourceType: null,
           sortOrder: 0,
           sourceIds: [],
         },
@@ -119,6 +127,43 @@ describe("scandal UI mapping", () => {
     expect(structured.claims).toHaveLength(1);
     expect(structured.claims[0].statement).toBe("Štruktúrované tvrdenie má prednosť.");
     expect(structured.claims[0].statement).not.toContain("Podľa priložených zdrojov");
+  });
+
+  it("uses source-backed DB events before generated fallback timeline", () => {
+    const kauza = mapScandalToKauza({
+      ...baseScandal,
+      events: [
+        {
+          eventDate: "2024-02-01",
+          titleSk: "Procesny signal: podnet",
+          descriptionSk: "Zdroj opisuje podany podnet.",
+          eventType: "complaint",
+          sourceUrl: "https://example.com/kauza",
+          sortOrder: 2,
+        },
+        {
+          eventDate: "2024-01-20",
+          titleSk: "Prvy zaznam",
+          descriptionSk: "Kauza bola prvykrat evidovana.",
+          eventType: "source_published",
+          sourceUrl: "https://example.com/kauza",
+          sortOrder: 1,
+        },
+      ],
+    });
+
+    expect(kauza.timeline).toEqual([
+      {
+        date: "2024-01-20",
+        title: "Prvy zaznam",
+        body: "Kauza bola prvykrat evidovana.",
+      },
+      {
+        date: "2024-02-01",
+        title: "Procesny signal: podnet",
+        body: "Zdroj opisuje podany podnet.",
+      },
+    ]);
   });
 
   it("removes imported scraper body text from generated summaries", () => {

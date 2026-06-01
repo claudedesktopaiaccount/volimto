@@ -1,12 +1,12 @@
-# Handoff: Polis — Slovenské voľby 2026
+# Handoff: VolimTo — Slovenské voľby 2026
 
 ## Overview
-Polis is a Slovak political data platform for the 2026 elections. It aggregates public opinion polls, runs Monte Carlo election predictions, and provides interactive tools: a coalition simulator, a voter calculator quiz, party programme explorer, and a community tipping feature.
+VolimTo is a Slovak political data platform for the 2026 elections. It aggregates public opinion polls, runs Monte Carlo election predictions, and provides interactive tools: a coalition simulator, a voter calculator quiz, party programme explorer, and a community tipping feature.
 
 This handoff covers a full redesign/improvement of the existing Claude Code–built app.
 
 ## About the Design Files
-The files in this bundle (`Polis.html` and `js/`) are **HTML design prototypes** — they show intended look, layout, interactions and behaviour. They are **not** production code to copy directly. Your task is to **recreate these designs in your existing codebase** (Next.js, SvelteKit, etc.) using its established patterns, routing, state management, and component libraries.
+The files in this bundle (`VolimTo.html` and `js/`) are **HTML design prototypes** — they show intended look, layout, interactions and behaviour. They are **not** production code to copy directly. Your task is to **recreate these designs in your existing codebase** (Next.js, SvelteKit, etc.) using its established patterns, routing, state management, and component libraries.
 
 The prototype uses React + Babel in-browser for interactivity. Map these components to your framework's equivalents.
 
@@ -80,7 +80,7 @@ The prototype uses React + Babel in-browser for interactivity. Map these compone
 ### 1. Global Navigation
 **Sticky top nav, 52px height, white bg, bottom border `#e8e3db`.**
 
-- Left: "Polis" logo — `DM Serif Display`, 20px, `#1a1a1a`, navigates to Home
+- Left: "VolimTo" logo — `DM Serif Display`, 20px, `#1a1a1a`, navigates to Home
 - Right links (14px, `#444`): Prehľad · Prieskumy · Predikcia · Tipovanie · Viac ↓ · Prihlásiť sa · 🌙
 - **"Viac" dropdown** (opens on click): Koaličný simulátor / Volebný kalkulátor / Povolebné plány
   - Dropdown: white, `border: 1px solid #e8e3db`, `border-radius: 8px`, `box-shadow: 0 4px 16px rgba(0,0,0,0.1)`, `min-width: 200px`, `padding: 4px 0`
@@ -225,12 +225,12 @@ The prototype uses React + Babel in-browser for interactivity. Map these compone
 **Critical:** `position: fixed; bottom: 0; left: 0; right: 0` — **never overlaps page content** (this was a bug in the original).
 - `background: #fff`, `border-top: 1px solid #e8e3db`, `box-shadow: 0 -4px 20px rgba(0,0,0,0.08)`, `z-index: 500`
 - Inner: max-width 1100px, flex row — avatar circle + text + Odmietnuť/Prijať buttons
-- Dismissed state stored in `localStorage('polis_cookie_ok')`
+- Dismissed state stored in `localStorage('volimto_cookie_ok')`
 
 ### Footer
 - `background: #1a1a1a`, top `margin-top: 80px`
 - Newsletter: input + "Odoberať" button, side by side
-- Bottom row: © 2026 Polis + disclaimer text (left) · Ochrana súkromia / Podmienky / Impressum links (right)
+- Bottom row: © 2026 VolimTo + disclaimer text (left) · Ochrana súkromia / Podmienky / Impressum links (right)
 - Input: `background: #2a2a2a`, `border: 1px solid #444`, `border-radius: 6px 0 0 6px`
 
 ---
@@ -254,9 +254,9 @@ The prototype uses React + Babel in-browser for interactivity. Map these compone
 ## State Management
 
 Each page is largely self-contained. Key shared state:
-- **Current page/route** — string key, persisted to `localStorage('polis_page')`
-- **Cookie dismissed** — `localStorage('polis_cookie_ok')`
-- **Tip vote** — `localStorage('polis_tip')` — party ID string
+- **Current page/route** — string key, persisted to `localStorage('volimto_page')`
+- **Cookie dismissed** — `localStorage('volimto_cookie_ok')`
+- **Tip vote** — `localStorage('volimto_tip')` — party ID string
 
 Page-local state:
 - Prieskumy: active agencies (array), time period, active tab
@@ -270,7 +270,7 @@ Page-local state:
 ## Assets & Data
 
 ### Party Data
-See `Polis.html` inline `data.js` block for full dataset including:
+See `VolimTo.html` inline `data.js` block for full dataset including:
 - `PARTIES` array: id, name, short, color, leader, pct, seats, winProb, predPct, interval
 - `POLL_SERIES`: monthly time series for each party (Jun 2025 – Apr 2026)
 - `AGENCY_DATA`: NMS/Focus/Ipsos/AKO latest readings per party
@@ -293,7 +293,7 @@ Custom SVG — 5 concentric semicircular arcs with 15/22/28/35/50 dots. Dots sor
 
 | File | Contents |
 |---|---|
-| `Polis.html` | Complete interactive prototype — all pages, interactions, and data inline |
+| `VolimTo.html` | Complete interactive prototype — all pages, interactions, and data inline |
 | `README.md` | This document |
 
-Open `Polis.html` in a browser to see the full interactive reference. Use browser DevTools to inspect exact computed styles.
+Open `VolimTo.html` in a browser to see the full interactive reference. Use browser DevTools to inspect exact computed styles.

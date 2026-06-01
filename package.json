@@ -12,6 +12,7 @@
     "db:push": "drizzle-kit push",
     "db:setup": "npm run db:push && npm run db:seed",
     "db:seed": "tsx scripts/seed-parties.ts && tsx scripts/seed-nrsr.ts",
+    "db:patch:strana-vidieka": "tsx scripts/patch-strana-vidieka.ts",
     "db:seed:nrsr": "tsx scripts/seed-nrsr.ts",
     "db:seed:scandals": "tsx scripts/seed-scandals.ts --limit=80",
     "db:seed:mp-activities": "tsx scripts/backfill-mp-activities.ts --limit=20",

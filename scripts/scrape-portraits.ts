@@ -14,7 +14,7 @@ const NRSR = "https://www.nrsr.sk";
 const LIST_URL = `${NRSR}/web/default.aspx?sid=poslanci/zoznam_abc`;
 const PHOTO_URL = (id: string) =>
   `${NRSR}/web/dynamic/PoslanecPhoto.aspx?PoslanecID=${id}&ImageWidth=600`;
-const UA = "Polis/1.0 (educational project; +https://volimto.sk)";
+const UA = "VolimTo/1.0 (educational project; +https://volimto.sk)";
 const CONCURRENCY = 5;
 const BATCH_DELAY_MS = 200;
 

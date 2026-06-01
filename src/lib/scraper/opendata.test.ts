@@ -2,10 +2,12 @@ import { describe, it, expect } from "vitest";
 import {
   parseSlovakNumber,
   parseCsvLine,
+  parseCrzExportXml,
   scrapeRpvsCompanies,
   scrapePublicContracts,
   getKnownDonations,
 } from "./opendata";
+import { PARTY_IDS } from "@/lib/parties";
 
 // ─── parseSlovakNumber ────────────────────────────────────
 
@@ -120,6 +122,48 @@ describe("scrapeRpvsCompanies", () => {
     expect(result).toEqual([]);
   });
 
+  it("parses current RPVS OData wrapper and follows nextLink", async () => {
+    const responses = new Map([
+      [
+        "https://rpvs.gov.sk/opendatav2/PartneriVerejnehoSektora",
+        JSON.stringify({
+          value: [
+            {
+              Id: 123,
+              ObchodneMeno: "ZELEX, s.r.o.",
+              Ico: "47 559 870",
+              FormaOsoby: "PravnickaOsoba",
+            },
+          ],
+          "@odata.nextLink": "https://rpvs.gov.sk/opendatav2/PartneriVerejnehoSektora?$skiptoken=Id-123",
+        }),
+      ],
+      [
+        "https://rpvs.gov.sk/opendatav2/PartneriVerejnehoSektora?$skiptoken=Id-123",
+        JSON.stringify({
+          value: [
+            {
+              Id: 456,
+              ObchodneMeno: "FECOM ICT s.r.o.",
+              Ico: "36823457",
+            },
+          ],
+        }),
+      ],
+    ]);
+    const fetcher = async (url: string) => responses.get(url) ?? "[]";
+
+    const result = await scrapeRpvsCompanies(10, fetcher);
+
+    expect(result).toHaveLength(2);
+    expect(result[0]).toMatchObject({
+      ico: "47559870",
+      name: "ZELEX, s.r.o.",
+      legalForm: "s.r.o.",
+      rpvsUboUrl: "https://rpvs.gov.sk/rpvs/Partner/Partner/Detail/123",
+    });
+  });
+
   it("skips records missing ico or name", async () => {
     const json = JSON.stringify([
       { Ico: "", ObchodneMeno: "No ICO firm" },
@@ -197,6 +241,41 @@ describe("scrapePublicContracts", () => {
   });
 });
 
+describe("parseCrzExportXml", () => {
+  it("parses current CRZ ZIP XML contract fields", () => {
+    const xml = [
+      '<?xml version="1.0" encoding="UTF-8"?>',
+      "<zmluvy>",
+      "<zmluva>",
+      "<nazov>1125/2013</nazov>",
+      "<ID>961292</ID>",
+      "<zs1>Úrad vlády SR</zs1>",
+      "<zs2>Gaton centrum, s.r.o.</zs2>",
+      "<predmet>Zmluva o poskytovaní služieb</predmet>",
+      "<datum>2013-06-27</datum>",
+      "<suma_zmluva>0.81</suma_zmluva>",
+      "<ico>45498652</ico>",
+      "<ico1>00151513</ico1>",
+      "</zmluva>",
+      "</zmluvy>",
+    ].join("");
+
+    const result = parseCrzExportXml(xml, "https://www.crz.gov.sk/export/2026-05-29.zip");
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      contractNumber: "1125/2013",
+      titleSk: "Zmluva o poskytovaní služieb",
+      contractingAuthority: "Úrad vlády SR",
+      supplierName: "Gaton centrum, s.r.o.",
+      supplierIco: "45498652",
+      amountEur: 0.81,
+      signedDate: "2013-06-27",
+      sourceUrl: "https://www.crz.gov.sk/zmluva/961292/",
+    });
+  });
+});
+
 // ─── getKnownDonations ────────────────────────────────────
 
 describe("getKnownDonations", () => {
@@ -228,5 +307,10 @@ describe("getKnownDonations", () => {
     const result = getKnownDonations();
     const partyIds = new Set(result.map((d) => d.partyId));
     expect(partyIds.size).toBeGreaterThanOrEqual(3);
+  });
+
+  it("uses party IDs that exist in the app registry", () => {
+    const result = getKnownDonations();
+    expect(result.map((d) => d.partyId).filter((id) => !PARTY_IDS.includes(id))).toEqual([]);
   });
 });

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { getDb } from "@/lib/db";
 import { scrapeMps, scrapeIndependentMps, scrapeRecentVotes, scrapeRecentSpeeches } from "@/lib/scraper/nrsr";
 import { upsertMps, upsertVotes, upsertSpeeches, MANUAL_PARTY_OVERRIDES } from "@/lib/db/nrsr";
@@ -78,6 +79,7 @@ export async function GET(req: NextRequest) {
     // Speeches (last 50)
     const speechItems = await scrapeRecentSpeeches(50);
     const speechCount = await upsertSpeeches(db, speechItems);
+    revalidateTag("poslanci", "max");
 
     return NextResponse.json({
       ok: true,
