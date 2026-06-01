@@ -7,19 +7,29 @@ import { checkAndIncrement } from "@/lib/api-keys/rate-limit";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET",
-  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Allow-Methods": "GET, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+};
+
+const CACHE_HEADERS = {
+  ...CORS_HEADERS,
   "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=1800",
 };
+
+function jsonWithCors(body: unknown, init?: ResponseInit) {
+  return NextResponse.json(body, {
+    ...init,
+    headers: {
+      ...CORS_HEADERS,
+      ...init?.headers,
+    },
+  });
+}
 
 export async function OPTIONS() {
   return new Response(null, {
     status: 204,
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET",
-      "Access-Control-Allow-Headers": "Content-Type",
-    },
+    headers: CORS_HEADERS,
   });
 }
 
@@ -27,32 +37,36 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
 
-    const db = getDb();
-
     // ── API Key validation ──────────────────────────────────
     const rawKey =
       request.headers.get("authorization")?.replace("Bearer ", "") ??
       searchParams.get("key");
 
     if (!rawKey) {
-      return NextResponse.json(
+      return jsonWithCors(
         { error: "API kľúč je povinný. Získajte ho na volimto.sk/api-pristup" },
         { status: 401 }
       );
     }
 
+    const db = getDb();
     const keyRecord = await lookupApiKey(rawKey, db);
 
     if (!keyRecord) {
-      return NextResponse.json({ error: "Neplatný API kľúč" }, { status: 401 });
+      return jsonWithCors({ error: "Neplatný API kľúč" }, { status: 401 });
     }
 
     const { allowed, remaining } = await checkAndIncrement(keyRecord.id, keyRecord.tier, db);
     if (!allowed) {
-      return NextResponse.json(
+      const response = jsonWithCors(
         { error: "Denný limit 100 požiadaviek vyčerpaný. Prejdite na platenú verziu." },
         { status: 429 }
       );
+      if (remaining !== undefined) {
+        response.headers.set("X-RateLimit-Remaining", String(remaining));
+        response.headers.set("X-RateLimit-Limit", "100");
+      }
+      return response;
     }
 
     // Parse limit (default 10, max 50)
@@ -72,7 +86,7 @@ export async function GET(request: NextRequest) {
     if (pollRows.length === 0) {
       return NextResponse.json(
         { polls: [], parties: [], generatedAt: new Date().toISOString() },
-        { headers: CORS_HEADERS }
+        { headers: CACHE_HEADERS }
       );
     }
 
@@ -129,7 +143,7 @@ export async function GET(request: NextRequest) {
         parties: partiesResponse,
         generatedAt: new Date().toISOString(),
       },
-      { headers: CORS_HEADERS }
+      { headers: CACHE_HEADERS }
     );
 
     if (remaining !== undefined) {
@@ -140,9 +154,9 @@ export async function GET(request: NextRequest) {
     return response;
   } catch (e) {
     console.error("GET /api/v1/polls error:", e);
-    return NextResponse.json(
+    return jsonWithCors(
       { error: "Interná chyba servera" },
-      { status: 500, headers: CORS_HEADERS }
+      { status: 500 }
     );
   }
 }

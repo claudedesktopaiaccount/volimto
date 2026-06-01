@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { GET, OPTIONS } from "../route";
 
 // ─── Unit tests for the public polls API ─────────────────────────────────────
 // We test the parameter validation logic and response shape without hitting the database.
@@ -115,5 +116,29 @@ describe("partyId filter logic", () => {
     const filter = "nonexistent";
     const filtered = filter ? parties.filter((p) => p.id === filter) : parties;
     expect(filtered).toHaveLength(0);
+  });
+});
+
+describe("polls API CORS", () => {
+  it("allows Authorization header in OPTIONS preflight", async () => {
+    const response = await OPTIONS();
+
+    expect(response.status).toBe(204);
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
+    expect(response.headers.get("Access-Control-Allow-Methods")).toContain("GET");
+    expect(response.headers.get("Access-Control-Allow-Methods")).toContain("OPTIONS");
+    expect(response.headers.get("Access-Control-Allow-Headers")).toContain("Authorization");
+  });
+
+  it("returns CORS headers on missing API key without caching the error", async () => {
+    const request = new Request("https://volimto.sk/api/v1/polls") as Parameters<typeof GET>[0];
+    const response = await GET(request);
+    const body = await response.json() as { error?: string };
+
+    expect(response.status).toBe(401);
+    expect(body.error).toBeTruthy();
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
+    expect(response.headers.get("Access-Control-Allow-Headers")).toContain("Authorization");
+    expect(response.headers.get("Cache-Control")).toBeNull();
   });
 });

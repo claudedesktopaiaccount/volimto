@@ -6,6 +6,18 @@ Target: Vercel + Neon Postgres
 
 This file is the Codex handoff for bringing VolimTo to release-ready state. It records what was verified, what is blocking release, and what must pass before production deployment.
 
+## Progress Log
+
+### 2026-06-01
+
+- Fixed `npm run test:integration` for Vitest 4 by adding `vitest.integration.config.ts` and replacing the removed `--include` CLI usage with `--config`.
+- Verified `npm run test:integration`: 1 file, 2 tests passed.
+- Fixed `/api/v1/polls` CORS to allow `Authorization` in preflight and error responses.
+- Added route-level CORS coverage for `/api/v1/polls`.
+- Moved missing API-key handling before `getDb()` so unauthenticated public API requests do not require database access.
+- Verified `npm test`: 46 files, 318 tests passed.
+- Verified `npm run lint` and `npx tsc --noEmit` after the changes.
+
 ## Current State
 
 Verified commands from the audit run:
