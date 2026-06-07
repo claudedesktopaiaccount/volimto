@@ -169,8 +169,16 @@ export default function KoalicnyClient({ pollResults }: KoalicnyClientProps) {
                   } ${isSelected ? "bg-[#f0f7ff]" : isInParliament ? "hover:bg-page" : ""}`}
                 >
                   <td className="px-6 py-3">
-                    <div
-                      className="w-[18px] h-[18px] rounded-[3px] border-2 flex items-center justify-center transition-colors"
+                    <button
+                      type="button"
+                      aria-pressed={isSelected}
+                      aria-label={`${isSelected ? "Odobrať" : "Pridať"} ${party.name} do koalície`}
+                      disabled={!isInParliament}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        if (isInParliament) toggleParty(party.id);
+                      }}
+                      className="flex h-[18px] w-[18px] items-center justify-center rounded-[3px] border-2 transition-colors disabled:cursor-not-allowed"
                       style={{
                         borderColor: isSelected ? (party.color ?? "#1a6eb5") : "#d0cbc3",
                         background: isSelected ? (party.color ?? "#1a6eb5") : "transparent",
@@ -187,7 +195,7 @@ export default function KoalicnyClient({ pollResults }: KoalicnyClientProps) {
                           />
                         </svg>
                       )}
-                    </div>
+                    </button>
                   </td>
                   <td className="px-2 py-3 text-[14px] font-medium text-ink">
                     <div className="flex items-center gap-2">

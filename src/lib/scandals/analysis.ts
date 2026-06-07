@@ -120,7 +120,7 @@ export function parseActorClaimsJson(raw: string): ScandalDraftActorClaim[] {
   return parsed.map(assertPublishableActorClaim);
 }
 
-export function assertPublishableActorClaim(value: unknown): ScandalDraftActorClaim {
+function assertPublishableActorClaim(value: unknown): ScandalDraftActorClaim {
   const claim = value as Partial<ScandalDraftActorClaim>;
   if (!claim || typeof claim !== "object") throw new Error("invalid_claim");
   if (typeof claim.targetLabel !== "string" || claim.targetLabel.trim().length < 3) throw new Error("missing_target");

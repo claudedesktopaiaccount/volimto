@@ -62,7 +62,7 @@ export async function deleteSession(token: string, db: Database): Promise<void> 
   await db.delete(userSessions).where(eq(userSessions.id, tokenHash));
 }
 
-export async function deleteExpiredSessions(db: Database): Promise<void> {
+async function deleteExpiredSessions(db: Database): Promise<void> {
   const now = new Date().toISOString();
   await db.delete(userSessions).where(lt(userSessions.expiresAt, now));
 }

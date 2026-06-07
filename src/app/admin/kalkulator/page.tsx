@@ -4,6 +4,8 @@ import { QUESTIONS } from "@/lib/kalkulator/questions";
 import { redirect } from "next/navigation";
 import { isAdminAuthedFromCookies } from "@/lib/admin-auth";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminKalkulatorPage({
   searchParams,
 }: {

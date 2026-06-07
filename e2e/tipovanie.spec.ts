@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { injectCsrfCookie } from "./helpers/csrf";
+import { injectCsrfCookie, injectVisitorCookie } from "./helpers/csrf";
 
 test.describe("Tipovanie (Voting)", () => {
   test("displays voting interface with party options", async ({ page }) => {
@@ -33,6 +33,7 @@ test.describe("Tipovanie (Voting)", () => {
   test("successful vote submission", async ({ page }) => {
     // Inject CSRF cookie before navigating
     await injectCsrfCookie(page);
+    await injectVisitorCookie(page, `e2e-success-${Date.now()}-${test.info().retry}`);
 
     await page.goto("/tipovanie");
 
@@ -54,7 +55,9 @@ test.describe("Tipovanie (Voting)", () => {
     const bodyText = await page.textContent("body");
     const hasResult =
       bodyText?.includes("Tip prijatý") ||
+      bodyText?.includes("Váš tip bol zaznamenaný") ||
       bodyText?.includes("Už ste hlasovali") ||
+      bodyText?.includes("Už ste tipovali") ||
       bodyText?.includes("Odosielam");
     expect(hasResult).toBeTruthy();
   });
@@ -62,6 +65,7 @@ test.describe("Tipovanie (Voting)", () => {
   test("duplicate vote is blocked", async ({ page }) => {
     // Inject CSRF cookie
     await injectCsrfCookie(page);
+    await injectVisitorCookie(page, `e2e-duplicate-${Date.now()}-${test.info().retry}`);
 
     await page.goto("/tipovanie");
 
@@ -86,7 +90,9 @@ test.describe("Tipovanie (Voting)", () => {
     const bodyText = await page.textContent("body");
     const alreadyVoted =
       bodyText?.includes("Už ste hlasovali") ||
-      bodyText?.includes("Tip prijatý");
+      bodyText?.includes("Už ste tipovali") ||
+      bodyText?.includes("Tip prijatý") ||
+      bodyText?.includes("Váš tip bol zaznamenaný");
 
     // If the page allows re-voting (no cookie persistence in test), try submitting
     if (!alreadyVoted) {

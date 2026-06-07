@@ -26,6 +26,13 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:integration": "vitest run --config vitest.integration.config.ts",
+    "fallow": "fallow --format json",
+    "fallow:audit": "fallow audit --format json --quiet",
+    "fallow:dead-code": "fallow dead-code --format json",
+    "fallow:dupes": "fallow dupes --format json",
+    "fallow:health": "fallow health --format json",
+    "dev:e2e": "tsx scripts/dev-e2e.ts",
+    "db:seed:e2e": "tsx scripts/seed-e2e.ts",
     "portraits:scrape": "tsx scripts/scrape-portraits.ts",
     "portraits:match": "tsx scripts/match-portraits-to-candidates.ts",
     "portraits:wiki": "tsx scripts/scrape-wikipedia-portraits.ts"
@@ -36,13 +43,11 @@
     "@neondatabase/serverless": "^1.0.2",
     "cheerio": "^1.2.0",
     "drizzle-orm": "^0.45.1",
-    "mammoth": "^1.12.0",
     "next": "^16.2.6",
     "react": "19.2.6",
     "react-dom": "19.2.6",
     "recharts": "^3.8.1",
-    "toucan-js": "^4.1.1",
-    "unpdf": "^1.6.0"
+    "toucan-js": "^4.1.1"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -60,6 +65,7 @@
     "drizzle-kit": "^0.31.10",
     "eslint": "^10.4.0",
     "eslint-plugin-react-hooks": "^7.1.1",
+    "fallow": "^2.89.0",
     "globals": "^17.6.0",
     "jsdom": "^29.1.1",
     "tailwindcss": "^4.3.0",

@@ -37,7 +37,7 @@ export function buttonClasses({
   );
 }
 
-export default function Button({
+function Button({
   variant = "secondary",
   size = "md",
   fullWidth = false,

@@ -125,6 +125,10 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+html {
+  scroll-padding-top: calc(var(--nav-height) + 16px);
+}
+
 h1, h2, h3 {
   font-family: var(--font-dm-sans), 'DM Sans', sans-serif;
   color: var(--text-primary);

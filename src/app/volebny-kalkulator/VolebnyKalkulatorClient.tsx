@@ -135,6 +135,7 @@ export default function VolebnyKalkulatorClient({ questions: questionsProp }: Pr
             setSelectedAnswer(null);
           }}
           className="px-5 py-2.5 text-[14px] font-semibold bg-ink text-white rounded-lg"
+          style={{ scrollMarginTop: "calc(var(--nav-height) + 16px)" }}
         >
           Začať znova
         </button>
@@ -219,6 +220,7 @@ export default function VolebnyKalkulatorClient({ questions: questionsProp }: Pr
               aria-label={`Odpoveď: ${answer.label}`}
               className="w-full text-left rounded-[9px] text-[14px] font-medium transition-all duration-150"
               style={{
+                scrollMarginTop: "calc(var(--nav-height) + 16px)",
                 padding: "13px 16px",
                 border: selectedAnswer === i ? "1.5px solid #1a1a1a" : "1.5px solid #e8e3db",
                 background: selectedAnswer === i ? "#1a1a1a" : "#fff",

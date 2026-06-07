@@ -17,6 +17,20 @@ This file is the Codex handoff for bringing VolimTo to release-ready state. It r
 - Moved missing API-key handling before `getDb()` so unauthenticated public API requests do not require database access.
 - Verified `npm test`: 46 files, 318 tests passed.
 - Verified `npm run lint` and `npx tsc --noEmit` after the changes.
+- Added deterministic Playwright E2E database wiring: `E2E_DATABASE_URL`, `e2e/global-setup.ts`, `scripts/seed-e2e.ts`, and `npm run dev:e2e`.
+- Playwright now seeds parties, one poll, poll results, crowd aggregates, and clears E2E rate limits before tests; it refuses to run if `E2E_DATABASE_URL` is missing or equals `DATABASE_URL`.
+- Reduced E2E database pressure by running Playwright with one worker and disabling full parallel mode.
+- Stabilized build/runtime DB access for `/kauzy`, `/tipovanie`, `/predikcia`, and `/volebny-kalkulator` with bounded timeout or intentional static-build fallback; marked `/admin/kalkulator` as dynamic.
+- Fixed duplicate homepage `<main>` by leaving the root layout as the only primary main landmark.
+- Restored accessible `aria-pressed` party toggles in the coalition simulator.
+- Rounded `Hemicycle` SVG coordinates to deterministic values.
+- Added scroll offset protection for the election calculator to avoid sticky-navbar click interception.
+- Verified `npm run lint`, `npx tsc --noEmit`, `npm test`, `npm run test:coverage`, `npm run test:integration`, `npm run build`, `npm audit`, and `npm audit --omit=dev`.
+- `npm run test:e2e` now fails fast without `E2E_DATABASE_URL` instead of using the shared database.
+- Added route-level Vitest coverage for auth CSRF/validation/session endpoints, GDPR CSRF/no-data behavior, newsletter subscribe validation/rate-limit/error mapping, and tipovanie validation before DB access.
+- Verified targeted route tests: 5 files, 22 tests passed.
+- Verified `npm test`: 51 files, 340 tests passed.
+- Verified `npm run lint` and `npx tsc --noEmit` after the route test additions.
 
 ## Current State
 
@@ -26,36 +40,26 @@ Verified commands from the audit run:
 | --- | --- | --- |
 | `npm run lint` | Pass | ESLint exited cleanly. |
 | `npx tsc --noEmit` | Pass | TypeScript exited cleanly. |
-| `npm test` | Pass | 46 test files, 316 tests passed. |
-| `npm run test:coverage` | Pass, insufficient | 58.29% statements, 62.31% lines. Coverage excludes important runtime areas. |
-| `npm run build` | Exit 0, not clean | Build completed, but static generation hit Neon errors and 60s retries. |
-| `npm run test:integration` | Fail | Vitest 4 rejects `--include`; integration script is obsolete. |
-| `npm run test:e2e` | Fail/hung | At least 12 failures before the run was stopped. |
+| `npm test` | Pass | 51 test files, 340 tests passed. |
+| `npm run test:coverage` | Pass, insufficient | 58.11% statements, 62.10% lines. Coverage excludes important runtime areas. |
+| `npm run build` | Pass, clean | Exit 0; no Neon errors, no route-generation retries, no 60s static generation timeout observed. |
+| `npm run test:integration` | Pass | 1 file, 2 tests passed through `vitest.integration.config.ts`. |
+| `npm run test:e2e` | Blocked by config | Fails fast: `E2E_DATABASE_URL is required for npm run test:e2e.` No shared DB was used. |
 | `npm audit` | Pass | 0 vulnerabilities. |
 | `npm audit --omit=dev` | Pass | 0 production vulnerabilities. |
 
-The repository is not release-ready. The strongest signal is not a compile failure; it is unreliable runtime behavior under build/E2E due to live Neon access, broken integration test wiring, and failing browser flows.
+The repository is not release-ready. Build and integration wiring are now clean, but E2E still needs an isolated Neon branch/test database configured through `E2E_DATABASE_URL`, and route/API coverage plus migration readiness remain incomplete.
 
 ## Release Blockers
 
 ### P0 - Must Fix Before Release
 
-1. Build must not depend on fragile live Neon access for public fallback-capable pages.
-   - Observed during `npm run build`: `/kauzy` and `/admin/kalkulator` static generation exceeded 60 seconds and retried.
-   - Observed Neon errors: `Control plane request failed` and `Failed to acquire permit to connect to the database`.
-   - Required outcome: `npm run build` exits 0 with no hidden DB errors, no 60s route retries, and no public route silently falling back because Neon failed during build.
-
-2. E2E must run against deterministic test data, not the shared production/dev Neon database.
+1. E2E must run against deterministic test data, not the shared production/dev Neon database.
    - Observed failures in `/kauzy`, GDPR delete, newsletter, tipovanie, and crowd data because multiple tests opened many DB-backed pages in parallel.
-   - Required outcome: Playwright has isolated or seeded state, can run repeatedly, and does not exhaust Neon connection permits.
+   - Current implementation requires `E2E_DATABASE_URL`, seeds deterministic data, refuses `E2E_DATABASE_URL === DATABASE_URL`, and runs with one worker.
+   - Remaining required outcome: provision an isolated Neon branch/test database, run `npm run test:e2e`, and confirm it passes repeatedly without exhausting Neon connection permits.
 
-3. `npm run test:integration` must be repaired for Vitest 4.
-   - Current script uses `vitest run --include 'src/**/*.integration.test.ts'`.
-   - Vitest 4.1.6 rejects `--include`.
-   - Context7/Vitest docs recommend config-level `include` or project-level config for integration tests.
-   - Required outcome: integration tests run through a dedicated config or project, for example `vitest.integration.config.ts` with `test.include = ["src/**/*.integration.test.ts"]`.
-
-4. E2E failures must be fixed.
+2. E2E failures must be verified against the new isolated E2E database.
    - `e2e/homepage.spec.ts`: `locator("main")` strict-mode violation because layout and page both render `<main>`.
    - `e2e/gdpr-delete.spec.ts`: delete flow timed out waiting for `/api/gdpr/delete`.
    - `e2e/kauzy.spec.ts`: `/kauzy` timed out or aborted when DB access failed.
@@ -64,28 +68,27 @@ The repository is not release-ready. The strongest signal is not a compile failu
    - `e2e/tipovanie.spec.ts`: vote flow failed; duplicate vote test received status 400 instead of 200/409.
    - `e2e/volebny-kalkulator.spec.ts`: long quiz flow timed out around question 18; restart flow had navbar pointer interception.
    - React hydration mismatch logged for `Hemicycle` SVG float attributes.
+   - Current implementation addresses the known UI contracts and isolates test state, but the suite has not run because `E2E_DATABASE_URL` is not configured.
    - Required outcome: `npm run test:e2e` passes locally and in CI without retries hiding real failures.
 
-5. Dirty migration state must be reconciled.
+3. Dirty migration state must be reconciled.
    - Many old `drizzle/` migrations and snapshots are deleted.
    - New `drizzle/0000_baseline_postgres.sql` exists.
    - Legacy migrations appear moved to `docs/db/legacy-migrations/`.
    - Required outcome: a reviewer can tell whether the baseline reset is intentional, what DB state it assumes, and exactly how to migrate/verify production.
 
-6. Critical API route tests are incomplete.
+4. Critical API route tests are incomplete.
    - Existing tests cover useful pure logic, scrapers, some DB builders, and limited route helpers.
-   - Missing or thin coverage remains for auth routes, GDPR routes, tipovanie route behavior, newsletter route behavior, API keys, Stripe checkout/webhook, admin routes, cron route auth/idempotency, and public API error paths.
+   - Current implementation covers `/api/v1/polls` CORS/missing-key behavior, scrape-scandals cron auth happy/unauthorized paths, admin import Claude parsing, auth CSRF/basic validation/session missing-token/logout behavior, GDPR CSRF/no-data behavior, newsletter subscribe validation/rate-limit/safe errors, and tipovanie pre-DB validation.
+   - Missing or thin coverage remains for auth database success/failure paths, GDPR data export/delete success paths, tipovanie duplicate/success behavior, newsletter unsubscribe behavior, API keys, Stripe checkout/webhook, admin routes, broader cron auth/idempotency, and public API error paths.
    - Required outcome: route-level tests lock status codes, CSRF behavior, validation, error handling, and no-secret-leak behavior.
-
-7. `/api/v1/polls` CORS is incomplete.
-   - Current preflight allows `Content-Type`, but the route accepts API keys through `Authorization`.
-   - Required outcome: `OPTIONS` and all JSON responses consistently allow `Authorization`, preserve the public response shape, and expose rate limit headers where appropriate.
 
 ### P1 - Should Fix Before Release
 
 1. Add bounded DB fallbacks/timeouts for public pages that can render fallback data.
    - Candidates: `/`, `/kauzy`, `/tipovanie`, `/poslanci`, `/predikcia`, `/prieskumy`, `/koalicny-simulator`.
-   - Required outcome: DB outage does not hang build or request handling beyond a small budget.
+   - Current implementation covers `/kauzy`, `/tipovanie`, `/predikcia`, and `/volebny-kalkulator`; `/admin/kalkulator` is dynamic.
+   - Remaining required outcome: evaluate `/`, `/poslanci`, `/prieskumy`, `/koalicny-simulator`, and any other DB-heavy public page for bounded runtime behavior.
 
 2. Add production environment validation.
    - Required production variables include at least `DATABASE_URL`, `ADMIN_SECRET`, `CRON_SECRET`, `NEXT_PUBLIC_SITE_URL`, `RESEND_API_KEY`, Stripe variables, and AI provider keys for enabled features.
@@ -100,13 +103,13 @@ The repository is not release-ready. The strongest signal is not a compile failu
    - Cron routes must be authenticated, idempotent, and safe on partial external failures.
    - Stripe webhook signature verification must be tested with valid, invalid, old, and malformed signatures.
 
-5. Fix React hydration mismatch in `Hemicycle`.
-   - Current log shows server/client float string differences on SVG coordinates.
-   - Required outcome: deterministic rounded coordinates or client-only rendering where appropriate.
+5. Verify React hydration mismatch in `Hemicycle` is gone.
+   - Coordinates are now rounded before rendering.
+   - Required outcome: confirm through E2E/browser logs once `E2E_DATABASE_URL` is configured.
 
-6. Stabilize mobile/click behavior in the election calculator.
-   - Current E2E shows sticky navbar intercepting answer button clicks.
-   - Required outcome: quiz answer buttons remain clickable at all scroll positions and viewport sizes.
+6. Verify mobile/click behavior in the election calculator.
+   - Scroll padding and button scroll margins were added.
+   - Required outcome: confirm through E2E/mobile viewport once `E2E_DATABASE_URL` is configured.
 
 ## Test Coverage Audit
 
@@ -115,6 +118,7 @@ Current strengths:
 - Core election math has tests: D'Hondt, Monte Carlo, prediction scoring, narrative.
 - Scraper parsing has broad unit coverage for Wikipedia, NRSR, OpenData, programs, promises, scandals, financial links, and MP activity fixtures.
 - Auth primitives have tests: password hashing, session hashing/validation, input validation.
+- Initial route-level coverage now exists for auth CSRF/validation/session endpoints, GDPR CSRF/no-data behavior, newsletter subscribe, tipovanie validation, `/api/v1/polls`, and scrape-scandals cron auth.
 - Several components have tests: ticker, share buttons, leaderboard preview, MP activity UI.
 - `kauzy` mapping and scandal analysis/trusted-source policies have meaningful tests.
 
@@ -125,32 +129,33 @@ Current gaps:
 - `src/app/api/**` route handlers are mostly not counted in coverage.
 - Client flows with stateful fetch behavior are under-tested outside E2E.
 - E2E relies on real DB behavior instead of deterministic fixtures/mocks.
-- Integration tests are excluded from default Vitest and the dedicated script is broken.
+- Integration tests are excluded from default Vitest, but the dedicated script now works.
 
 Required test changes:
 
-1. Create a Vitest integration config or project for `src/**/*.integration.test.ts`.
+1. Keep the Vitest integration config for `src/**/*.integration.test.ts` passing.
 2. Expand coverage include patterns to cover `src/app/api/**/*.ts`, selected `src/app/**` helpers, and DB modules that can be tested with mocks.
 3. Add route-level unit/integration tests for:
-   - `src/app/api/auth/register/route.ts`
-   - `src/app/api/auth/login/route.ts`
-   - `src/app/api/auth/logout/route.ts`
-   - `src/app/api/auth/me/route.ts`
-   - `src/app/api/gdpr/delete/route.ts`
-   - `src/app/api/gdpr/export/route.ts`
-   - `src/app/api/tipovanie/route.ts`
-   - `src/app/api/newsletter/subscribe/route.ts`
+   - `src/app/api/auth/register/route.ts` (partial: CSRF and validation)
+   - `src/app/api/auth/login/route.ts` (partial: CSRF and validation)
+   - `src/app/api/auth/logout/route.ts` (partial: missing/session cookie behavior)
+   - `src/app/api/auth/me/route.ts` (partial: missing-token behavior)
+   - `src/app/api/gdpr/delete/route.ts` (partial: CSRF and no-data behavior)
+   - `src/app/api/gdpr/export/route.ts` (partial: CSRF and no-data behavior)
+   - `src/app/api/tipovanie/route.ts` (partial: pre-DB validation)
+   - `src/app/api/newsletter/subscribe/route.ts` (partial: validation, rate limit, safe errors)
    - `src/app/api/newsletter/unsubscribe/route.ts`
    - `src/app/api/keys/route.ts`
    - `src/app/api/v1/polls/route.ts`
    - Stripe checkout/webhook routes
    - admin routes
    - cron routes
-4. Add E2E fixtures or a test DB strategy:
-   - Seed required parties/polls/crowd/newsletter state.
+4. Finish E2E fixtures or a test DB strategy:
+   - Seed required parties/polls/crowd state.
    - Use unique test identifiers per run.
-   - Run stateful suites serially or isolate them.
-   - Avoid production/shared DB URLs in browser tests.
+   - Run stateful suites serially or isolate them. Current config uses one worker.
+   - Avoid production/shared DB URLs in browser tests. Current config refuses missing/equal E2E DB URLs.
+   - Provision `E2E_DATABASE_URL` and verify the suite.
 5. Add CI gating so `lint`, `tsc`, unit tests, coverage, integration tests, build, E2E, and audit all run before release.
 
 Suggested minimum coverage targets after expanding scope:
@@ -190,7 +195,7 @@ Required security/API work:
 4. API keys:
    - Ensure raw API keys are only returned once at creation.
    - Test rate limiting and revoked key behavior.
-   - Fix `/api/v1/polls` CORS for `Authorization`.
+   - Keep `/api/v1/polls` CORS coverage for `Authorization`.
 
 5. Error handling:
    - Avoid returning provider raw error bodies to clients unless scrubbed.
@@ -205,7 +210,8 @@ Required security/API work:
 Current risk:
 
 - The repo has a large migration reset in progress: old migrations deleted, a new baseline added, and legacy SQL moved under docs.
-- Build and E2E use live Neon and hit connection/control-plane failures.
+- Build no longer hit Neon connection/control-plane failures in the latest run.
+- E2E now refuses to run without `E2E_DATABASE_URL`; it still needs an isolated Neon branch/test database to complete.
 - Some routes perform runtime seeding or aggregate recomputation in request handlers.
 
 Required DB work:
@@ -227,18 +233,18 @@ Required DB work:
    - Do not deploy until production migration instructions are reviewed.
 
 4. Reduce connection pressure.
-   - Avoid parallel page generation repeatedly opening live Neon HTTP queries.
-   - Add cache/fallback boundaries for data-heavy pages.
-   - Configure E2E to avoid live shared DB use.
+   - Avoid parallel page generation repeatedly opening live Neon HTTP queries. Latest build passed cleanly.
+   - Add cache/fallback boundaries for remaining data-heavy pages.
+   - Configure E2E to avoid live shared DB use. Current config requires `E2E_DATABASE_URL`.
 
 ## UX/Accessibility
 
 Known issues from E2E:
 
-- Homepage has nested/duplicate `<main>` landmarks, causing strict selector ambiguity.
-- Election calculator clicks can be intercepted by sticky navbar.
-- Coalition simulator tests no longer find expected pressed-state controls.
-- Hemicycle produces React hydration mismatch due to SVG numeric differences.
+- Homepage nested/duplicate `<main>` issue has a code fix and needs E2E confirmation.
+- Election calculator sticky-navbar click interception has a code fix and needs E2E confirmation.
+- Coalition simulator pressed-state controls have a code fix and need E2E confirmation.
+- Hemicycle SVG numeric mismatch has a code fix and needs E2E/browser-log confirmation.
 - Some E2E selectors are brittle and rely on broad text/attribute matching.
 
 Required UX/accessibility work:
@@ -290,17 +296,17 @@ Release is allowed only when all items below are true:
 - [ ] Dirty worktree reviewed; unrelated user changes preserved.
 - [ ] Migration reset/baseline reviewed and documented.
 - [ ] Production environment variables verified.
-- [ ] `npm run lint` passes.
-- [ ] `npx tsc --noEmit` passes.
-- [ ] `npm test` passes.
+- [x] `npm run lint` passes.
+- [x] `npx tsc --noEmit` passes.
+- [x] `npm test` passes.
 - [ ] `npm run test:coverage` passes with expanded scope and accepted thresholds.
-- [ ] `npm run test:integration` passes with Vitest 4-compatible config.
-- [ ] `npm run build` passes with no DB errors, route timeouts, or hidden fallback failures.
+- [x] `npm run test:integration` passes with Vitest 4-compatible config.
+- [x] `npm run build` passes with no DB errors, route timeouts, or hidden fallback failures.
 - [ ] `npm run test:e2e` passes against isolated deterministic test state.
-- [ ] `npm audit` passes.
-- [ ] `npm audit --omit=dev` passes.
+- [x] `npm audit` passes.
+- [x] `npm audit --omit=dev` passes.
 - [ ] Critical route tests cover auth, GDPR, newsletter, tipovanie, API keys, Stripe, admin, cron, and public API error paths.
-- [ ] `/api/v1/polls` CORS supports `Authorization`.
+- [x] `/api/v1/polls` CORS supports `Authorization`.
 - [ ] Admin auth has rate limiting and malformed-cookie tests.
 - [ ] Public pages degrade gracefully under DB failure where fallback data exists.
 - [ ] Stripe webhook is signature-tested and idempotent.

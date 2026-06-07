@@ -5,7 +5,7 @@
  */
 export const COALITION_PARTY_IDS = new Set<string>(["smer-sd", "hlas-sd", "sns", "vidieka"]);
 
-export function isCoalitionParty(partyId: string | null | undefined): boolean {
+function isCoalitionParty(partyId: string | null | undefined): boolean {
   return !!partyId && COALITION_PARTY_IDS.has(partyId);
 }
 

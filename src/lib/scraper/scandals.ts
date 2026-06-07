@@ -113,7 +113,7 @@ export async function scrapeAndStoreScandals(
   };
 }
 
-export async function scrapeScandalArchive(db: Database, limit = DEFAULT_LIMIT): Promise<PreparedScandal[]> {
+async function scrapeScandalArchive(db: Database, limit = DEFAULT_LIMIT): Promise<PreparedScandal[]> {
   const matchMps = await loadMpMatcher(db);
   const posts = await fetchZastavmePosts(limit);
   const prepared: PreparedScandal[] = [];
@@ -228,7 +228,7 @@ export function buildScandalSlug(sourceSlug: string) {
   return `zk-${sourceSlug}`;
 }
 
-export async function upsertPreparedScandals(db: Database, items: PreparedScandal[]) {
+async function upsertPreparedScandals(db: Database, items: PreparedScandal[]) {
   let scandalsUpserted = 0;
   let sourcesUpserted = 0;
   let linksUpserted = 0;

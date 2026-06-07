@@ -120,4 +120,4 @@ export function estimateStdDev(
   return Math.min(4.0, Math.max(1.5, empiricalStd));
 }
 
-export { SIMULATIONS, type PartyInput, type SimulationResult };
+export { type PartyInput, type SimulationResult };

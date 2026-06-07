@@ -98,6 +98,25 @@ Before writing/modifying code using any library below, ALWAYS use context7 MCP (
 
 Haven't looked up docs this session → stop, use context7 first.
 
+## Fallow - Official Docs and Codebase Intelligence
+
+Use Fallow when a task needs repo-wide TypeScript/JavaScript intelligence: unused code, unused exports, unused dependencies, duplicate code, complexity/health hotspots, architecture boundary drift, feature-flag inventory, or PR quality gates.
+
+Before changing Fallow config, MCP setup, CI integration, suppression syntax, or Fallow CLI usage, fetch current Fallow docs first:
+- Prefer Context7 library `/fallow-rs/docs` for Fallow documentation.
+- If Context7 is unavailable or incomplete, use the official docs index `https://docs.fallow.tools/llms.txt`, then open the specific linked page under `https://docs.fallow.tools/`.
+- Do not rely on training data for Fallow command syntax, config keys, MCP tools, or agent workflow details.
+
+Tooling rules:
+- Prefer the configured `fallow` MCP server for structured analysis when available.
+- CLI fallback is local project Fallow via npm scripts or `npx fallow`.
+- Use JSON output for agent workflows: `npm run fallow`, `npm run fallow:dead-code`, `npm run fallow:dupes`, `npm run fallow:health`, or `npm run fallow:audit`.
+- After code generation or broad refactors, run `npm run fallow:audit` when the change can affect reachability, duplication, complexity, dependency usage, or boundaries.
+- For full cleanup/adoption work, run full-repo analysis first (`npm run fallow`, `npm run fallow:dead-code`, `npm run fallow:dupes`, `npm run fallow:health`), not only `fallow audit`.
+- Run dry-run auto-fix first (`npx fallow fix --dry-run --format json`) and only apply (`npx fallow fix --yes --format json`) after reviewing the proposed edits.
+- Trace before deleting ambiguous findings: use Fallow trace commands/MCP tools for exports, files, dependencies, or duplicate clone fingerprints.
+- Prefer modeling intentional exceptions in Fallow config over repeated inline suppressions; keep any suppression narrow and documented.
+
 ## Codex Automations
 
 ### Hooks (`.Codex/settings.json`)

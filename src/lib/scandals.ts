@@ -273,7 +273,7 @@ const CLOSED_STATUSES = new Set<KauzaStatus>([
   "zastavene",
 ]);
 
-export function normalizeStatus(status: string): KauzaStatus {
+function normalizeStatus(status: string): KauzaStatus {
   const normalized = normalizeKey(status);
   if (normalized === "uzavreta_bez_vysledku") return "uzavreta_bez_vysledku";
   if (normalized === "odsudeny") return "odsudeny";
@@ -284,7 +284,7 @@ export function normalizeStatus(status: string): KauzaStatus {
   return "vysetruje_sa";
 }
 
-export function normalizeCategory(category: string): KauzaCategory {
+function normalizeCategory(category: string): KauzaCategory {
   const normalized = normalizeKey(category);
   if (normalized === "korupcia") return "korupcia";
   if (normalized === "klientelizmus") return "klientelizmus";

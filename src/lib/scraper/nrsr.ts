@@ -57,7 +57,7 @@ const NRSR_MIN_REQUEST_DELAY_MS = 800;
 const NRSR_REQUEST_JITTER_MS = 400;
 const DEFAULT_RATE_LIMIT_RETRY_MS = 60 * 60 * 1000;
 
-export class NrsrRateLimitError extends Error {
+class NrsrRateLimitError extends Error {
   readonly retryAfterMs: number;
   readonly url: string;
 
@@ -196,7 +196,7 @@ function defaultFetcher(url: string): Promise<string> {
  * Flow: GET sslp form → extract ViewState → POST with mpsCombo=personId →
  * follow 302 redirect → return result HTML.
  */
-export function fetchLegislationHtml(
+function fetchLegislationHtml(
   personId: string,
   term: number
 ): Promise<string> {
@@ -365,7 +365,7 @@ export async function scrapeIndependentMps(
   }
 }
 
-export function parseIndependentIds(html: string): Set<string> {
+function parseIndependentIds(html: string): Set<string> {
   const ids = new Set<string>();
   const re = /PoslanecID=(\d+)/gi;
   let m: RegExpExecArray | null;
@@ -1090,7 +1090,7 @@ export function parseQuestionsList(html: string): ScrapedQuestion[] {
   return out;
 }
 
-export function parseLegislationList(html: string): ScrapedLegislationItem[] {
+function parseLegislationList(html: string): ScrapedLegislationItem[] {
   const $ = cheerio.load(html);
   const out: ScrapedLegislationItem[] = [];
   // SSLP result grid columns (observed from POST response):

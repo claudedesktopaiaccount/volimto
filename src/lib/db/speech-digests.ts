@@ -14,7 +14,7 @@ export interface SpeechDigestJobResult {
   failed: number;
 }
 
-export async function updateSpeechDigest(
+async function updateSpeechDigest(
   db: Database,
   speechId: number,
   digest: SpeechDigest

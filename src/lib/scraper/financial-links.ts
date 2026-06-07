@@ -67,7 +67,7 @@ export async function extractAndStoreFinancialLinksFromScandals(
   };
 }
 
-export async function extractFinancialLinksWithGemini(
+async function extractFinancialLinksWithGemini(
   item: PreparedScandal,
   apiKey: string
 ): Promise<VerifiedPoliticianCompanyLink[]> {

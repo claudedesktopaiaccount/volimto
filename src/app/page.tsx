@@ -112,7 +112,7 @@ export default async function Home() {
   ];
 
   return (
-    <main>
+    <div>
       {/* Hero */}
       <section className="border-b border-border bg-subtle px-6 pb-12 pt-12 text-center md:pb-14">
         <div className="max-w-content mx-auto">
@@ -189,7 +189,7 @@ export default async function Home() {
           ))}
         </div>
       </section>
-    </main>
+    </div>
   );
 }
 

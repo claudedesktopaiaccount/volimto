@@ -5,6 +5,7 @@ import { createSentryWithoutRequest, captureException } from "@/lib/sentry";
 import { eq, desc } from "drizzle-orm";
 import TipovanieClient from "./TipovanieClient";
 import PageHeader from "@/components/ui/PageHeader";
+import { withTimeout } from "@/lib/runtime-data";
 
 export const metadata: Metadata = {
   title: "Tipovanie",
@@ -25,7 +26,7 @@ export default async function TipovaniePage() {
   try {
     const db = getDb();
 
-    const [aggregates, lbRows] = await Promise.all([
+    const [aggregates, lbRows] = await withTimeout("tipovanie initial data", () => Promise.all([
       db.select().from(crowdAggregates),
       db
         .select({
@@ -41,7 +42,7 @@ export default async function TipovaniePage() {
         .orderBy(desc(predictionScores.totalScore))
         .limit(20)
         .catch(() => []),
-    ]);
+    ]));
 
     initialCrowd = aggregates.map((a) => ({
       partyId: a.partyId,

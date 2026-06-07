@@ -9,7 +9,7 @@ export const SITE_LOCALE = "sk_SK";
 export const ELECTION_DATE_ESTIMATE = new Date("2027-09-30");
 
 /** Brand colors used in generated icons and OG images. */
-export const BRAND_COLORS = {
+const BRAND_COLORS = {
   ink: "#111110",
   paper: "#F4F3EE",
   divider: "#D6D5CF",

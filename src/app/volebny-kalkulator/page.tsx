@@ -4,6 +4,7 @@ import VolebnyKalkulatorClient from "./VolebnyKalkulatorClient";
 import { getKalkulatorWeights } from "@/lib/db/kalkulator";
 import { QUESTIONS } from "@/lib/kalkulator/questions";
 import type { Question } from "@/lib/kalkulator/questions";
+import { isStaticBuild, withTimeout } from "@/lib/runtime-data";
 
 export const revalidate = 86400; // 24h — weights change rarely
 
@@ -20,8 +21,9 @@ export default async function VolebnyKalkulatorPage() {
   let questions: Question[] = QUESTIONS; // fallback to static data
 
   try {
+    if (isStaticBuild()) throw new Error("skip calculator weights during static build");
     const db = getDb();
-    const rows = await getKalkulatorWeights(db);
+    const rows = await withTimeout("calculator weights", () => getKalkulatorWeights(db));
 
     if (rows.length > 0) {
       // Reconstruct Question[] from flat DB rows

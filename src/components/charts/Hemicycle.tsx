@@ -38,6 +38,7 @@ export default function Hemicycle({ seats, selectedParties }: HemicycleProps) {
   const maxR = 180;
 
   const svgDots: { x: number; y: number; color: string; selected: boolean; partyId: string }[] = [];
+  const round = (value: number) => Math.round(value * 1000) / 1000;
 
   for (let row = 0; row < rows.length; row++) {
     const count = rows[row];
@@ -48,7 +49,7 @@ export default function Hemicycle({ seats, selectedParties }: HemicycleProps) {
       const x = cx + r * Math.cos(angle);
       const y = cy - r * Math.sin(angle);
       const dot = dots[dotIndex++];
-      svgDots.push({ x, y, ...dot });
+      svgDots.push({ x: round(x), y: round(y), ...dot });
     }
   }
 

@@ -6,6 +6,7 @@ import { getScandalKauzy } from "@/lib/db/scandals";
 import { KAUZY as FALLBACK_KAUZY } from "@/lib/kauzy-data";
 import { getActiveCourtKauzy, getKauzaStats, type Kauza } from "@/lib/scandals";
 import { classifyScandalSource } from "@/lib/scandals/trusted-sources";
+import { isStaticBuild, withTimeout } from "@/lib/runtime-data";
 
 export const revalidate = 3600;
 
@@ -40,10 +41,10 @@ export default async function KauzyPage() {
 }
 
 async function loadKauzy(): Promise<Kauza[]> {
-  if (!process.env.DATABASE_URL) return normalizeFallbackKauzy();
+  if (!process.env.DATABASE_URL || isStaticBuild()) return normalizeFallbackKauzy();
 
   try {
-    const dbKauzy = await getScandalKauzy(getDb());
+    const dbKauzy = await withTimeout("kauzy database load", () => getScandalKauzy(getDb()));
     return dbKauzy.length > 0 ? dbKauzy : normalizeFallbackKauzy();
   } catch (error) {
     console.error("[kauzy] failed to load scandals from database", error);

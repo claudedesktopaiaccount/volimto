@@ -7,6 +7,7 @@ import { getOrGenerateNarrative } from "@/lib/prediction/narrative";
 import { getDb } from "@/lib/db";
 import { getCandidates } from "@/lib/db/candidates";
 import PredikciaClient from "./PredikciaClient";
+import { isStaticBuild, withTimeout } from "@/lib/runtime-data";
 
 export const metadata: Metadata = {
   title: "Predikcia",
@@ -57,9 +58,12 @@ export default async function PredikciaPage() {
 
   let narrative: string | null = null;
   try {
+    if (isStaticBuild()) throw new Error("skip narrative during static build");
     const db = getDb();
     narrative = aggregated.length > 0
-      ? await getOrGenerateNarrative(db, aggregated, simulation, process.env.ANTHROPIC_API_KEY)
+      ? await withTimeout("prediction narrative", () =>
+          getOrGenerateNarrative(db, aggregated, simulation, process.env.ANTHROPIC_API_KEY)
+        )
       : null;
   } catch {
     // narrative unavailable — page renders without it
@@ -67,8 +71,9 @@ export default async function PredikciaPage() {
 
   let candidates: Awaited<ReturnType<typeof getCandidates>> = [];
   try {
+    if (isStaticBuild()) throw new Error("skip candidates during static build");
     const db = getDb();
-    candidates = await getCandidates(db);
+    candidates = await withTimeout("prediction candidates", () => getCandidates(db));
   } catch {
     // candidates unavailable — PoslanciSection renders empty
   }

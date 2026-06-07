@@ -52,4 +52,4 @@ export function allocateSeats(votes: PartyVote[]): SeatAllocation[] {
   }));
 }
 
-export { TOTAL_SEATS, PARLIAMENTARY_THRESHOLD, type PartyVote, type SeatAllocation };
+export { type PartyVote, type SeatAllocation };

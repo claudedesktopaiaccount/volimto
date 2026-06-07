@@ -249,7 +249,7 @@ function previousUtcDateIso(now = new Date()): string {
   return toIsoDate(previous);
 }
 
-export function getCrzExportUrl(dateIso = previousUtcDateIso()): string {
+function getCrzExportUrl(dateIso = previousUtcDateIso()): string {
   return `${CRZ_EXPORT_BASE_URL}/${dateIso}.zip`;
 }
 
@@ -268,7 +268,7 @@ async function inflateRaw(compressed: Uint8Array): Promise<string> {
   return new Response(stream).text();
 }
 
-export async function extractFirstZipText(zipBuffer: ArrayBuffer): Promise<string> {
+async function extractFirstZipText(zipBuffer: ArrayBuffer): Promise<string> {
   const view = new DataView(zipBuffer);
   const bytes = new Uint8Array(zipBuffer);
 

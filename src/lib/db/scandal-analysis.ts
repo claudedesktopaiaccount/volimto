@@ -202,7 +202,7 @@ export async function regenerateScandalAnalysisDraft(db: Database, draftId: numb
     .where(eq(scandalAnalysisDrafts.id, draftId));
 }
 
-export async function createDraftForScandal(db: Database, scandalId: number, pageText: string) {
+async function createDraftForScandal(db: Database, scandalId: number, pageText: string) {
   const input = await buildDraftInputForScandal(db, scandalId, pageText);
   await db.insert(scandalAnalysisDrafts).values({
     scandalId,

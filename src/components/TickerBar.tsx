@@ -18,7 +18,7 @@ function getDeltaClass(delta: number): string {
   return "delta-neutral";
 }
 
-export default function TickerBar({ parties, agency, date }: TickerBarProps) {
+function TickerBar({ parties, agency, date }: TickerBarProps) {
   return (
     <div className="bg-[#111] text-[#ccc] px-4 py-2 overflow-x-auto whitespace-nowrap border-b border-divider">
       <div className="flex items-center gap-6 font-mono text-xs">

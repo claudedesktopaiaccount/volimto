@@ -111,7 +111,7 @@ export interface PromiseRow {
 
 // ─── 1. getMps — paginated list ──────────────────────────────────────────────
 
-export async function getMps(
+async function getMps(
   db: Database,
   opts: {
     party?: string;
@@ -366,7 +366,7 @@ export async function getMpDetailOverview(
   };
 }
 
-export async function getMpPartyPromises(
+async function getMpPartyPromises(
   db: Database,
   partyId: string
 ): Promise<PromiseRow[]> {
@@ -501,7 +501,7 @@ export async function getMpAmendments(
   return { rows, total: t?.total ?? 0 };
 }
 
-export async function getMpForeignTrips(db: Database, mpId: number): Promise<TripRow[]> {
+async function getMpForeignTrips(db: Database, mpId: number): Promise<TripRow[]> {
   return db.select({
     id: mpForeignTrips.id, date: mpForeignTrips.date,
     country: mpForeignTrips.country, purpose: mpForeignTrips.purpose,
@@ -511,7 +511,7 @@ export async function getMpForeignTrips(db: Database, mpId: number): Promise<Tri
     .orderBy(desc(mpForeignTrips.date));
 }
 
-export async function getMpAssistants(db: Database, mpId: number): Promise<AssistantRow[]> {
+async function getMpAssistants(db: Database, mpId: number): Promise<AssistantRow[]> {
   return db.select({
     id: mpAssistants.id, name: mpAssistants.name, type: mpAssistants.type,
   })
@@ -519,7 +519,7 @@ export async function getMpAssistants(db: Database, mpId: number): Promise<Assis
     .orderBy(asc(mpAssistants.name));
 }
 
-export async function getMpOffices(db: Database, mpId: number): Promise<OfficeRow[]> {
+async function getMpOffices(db: Database, mpId: number): Promise<OfficeRow[]> {
   return db.select({
     id: mpOffices.id, address: mpOffices.address, city: mpOffices.city,
   })

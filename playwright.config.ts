@@ -1,11 +1,17 @@
 import { defineConfig, devices } from "@playwright/test";
+import dotenv from "dotenv";
+import path from "path";
+
+dotenv.config({ path: path.resolve(__dirname, ".env.local") });
+dotenv.config({ path: path.resolve(__dirname, ".env") });
 
 export default defineConfig({
   testDir: "./e2e",
-  fullyParallel: true,
+  globalSetup: require.resolve("./e2e/global-setup"),
+  fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  workers: 1,
   reporter: "html",
   timeout: 30_000,
 
@@ -22,8 +28,8 @@ export default defineConfig({
   ],
 
   webServer: {
-    command: "npm run dev",
-    port: 3000,
+    command: "npm run dev:e2e",
+    url: "http://localhost:3000",
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,
   },
