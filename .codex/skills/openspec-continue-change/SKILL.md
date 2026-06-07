@@ -1,6 +1,6 @@
 ---
 name: openspec-continue-change
-description: Automatically continue an OpenSpec change from natural language. Use when the user asks to continue, resume, advance, fill in the next artifact, create the next spec/design/ADR/tasks artifact, or progress the current OpenSpec workflow.
+description: Continue an active OpenSpec change.
 license: MIT
 compatibility: Requires openspec CLI.
 metadata:

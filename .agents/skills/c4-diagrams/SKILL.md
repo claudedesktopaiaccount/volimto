@@ -1,6 +1,6 @@
 ---
 name: c4-diagrams
-description: Automatically create or review C4-style architecture diagrams from natural language. Use when design rules require C4 diagrams, or when explaining existing code architecture, visualizing a new system before detailed design, mapping software boundaries, or creating C4-style diagrams in ASCII or Mermaid.
+description: Create or review C4 architecture diagrams.
 ---
 
 # C4 Diagrams

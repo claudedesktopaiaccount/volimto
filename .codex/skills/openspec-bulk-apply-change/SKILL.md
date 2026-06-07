@@ -1,6 +1,6 @@
 ---
 name: openspec-bulk-apply-change
-description: Automatically coordinate multiple OpenSpec changes from natural language. Use when the user asks to apply, implement, or verify several active changes in parallel or across isolated worktrees.
+description: Coordinate multiple OpenSpec changes.
 license: MIT
 compatibility: Requires git, OpenSpec CLI, and OpenCode subagents.
 metadata:

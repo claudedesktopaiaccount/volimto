@@ -1,6 +1,6 @@
 ---
 name: openspec-new-change
-description: Automatically start a new OpenSpec change from natural language. Use when the user asks to start, create, plan, spec, or open a structured change for a feature, fix, refactor, or modification, without requiring slash commands or terminal use from the user.
+description: Start a new OpenSpec change.
 license: MIT
 compatibility: Requires openspec CLI.
 metadata:

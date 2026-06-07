@@ -1,6 +1,6 @@
 ---
 name: openspec-archive-change
-description: Automatically archive a completed OpenSpec change from natural language. Use when the user asks to archive, finalize, close out, complete, or merge completed artifacts back into the main specs after implementation is done.
+description: Archive a completed OpenSpec change.
 license: MIT
 compatibility: Requires openspec CLI.
 metadata:

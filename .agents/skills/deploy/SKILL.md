@@ -1,6 +1,6 @@
 ---
 name: deploy
-description: Build and deploy the app to Cloudflare Workers via OpenNextJS
+description: Build and deploy the app.
 disable-model-invocation: true
 ---
 

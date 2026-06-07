@@ -1,6 +1,6 @@
 ---
 name: architectural-decision-records
-description: Automatically document, draft, or review architectural decisions from natural language. Use when ADR rules require decision records, or when working with ADRs, decision logs, tradeoffs, rationale, consequences, alternatives, or architecture decision history.
+description: Draft or review ADRs and decision records.
 ---
 
 # Architectural Decision Records

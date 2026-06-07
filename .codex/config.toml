@@ -1,7 +1,4 @@
 sandbox_mode = "workspace-write"
-[mcp_servers.figma-remote-mcp]
-url = "https://mcp.figma.com/mcp"
-
 [mcp_servers.fallow]
 command = 'C:\Users\misko\Downloads\volimto\node_modules\.bin\fallow-mcp.cmd'
 args = []

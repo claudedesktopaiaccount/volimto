@@ -1,6 +1,6 @@
 ---
 name: db-migrate
-description: Generate and apply Drizzle ORM database migrations to Cloudflare D1
+description: Generate and apply Drizzle migrations.
 disable-model-invocation: true
 ---
 

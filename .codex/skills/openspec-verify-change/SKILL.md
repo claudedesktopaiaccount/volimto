@@ -1,6 +1,6 @@
 ---
 name: openspec-verify-change
-description: Automatically verify an OpenSpec change from natural language. Use when the user asks to verify, validate, check, review readiness, confirm implementation matches artifacts, or see whether a change is ready to archive.
+description: Verify an OpenSpec change.
 license: MIT
 compatibility: Requires openspec CLI.
 metadata:

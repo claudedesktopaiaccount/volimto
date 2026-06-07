@@ -1,6 +1,6 @@
 ---
 name: openspec-apply-change
-description: Automatically implement tasks from an OpenSpec change. Use when the user asks to implement, apply, build, code, execute, continue implementation, or work through OpenSpec tasks, without requiring slash commands or terminal use from the user.
+description: Implement tasks from an OpenSpec change.
 license: MIT
 compatibility: Requires openspec CLI.
 metadata:

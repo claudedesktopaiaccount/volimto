@@ -1,6 +1,6 @@
 ---
 name: grill-me
-description: Automatically stress-test OpenSpec proposals, plans, and designs from natural language. Use when proposal rules require grill-me, or when the user wants to stress-test a plan, get grilled on their design, challenge assumptions, or sharpen intent before implementation.
+description: Stress-test OpenSpec proposals and plans.
 ---
 
 Interview me relentlessly about every aspect of this plan until we reach a shared understanding. Walk down each branch of the design tree, resolving dependencies between decisions one-by-one. For each question, provide your recommended answer.

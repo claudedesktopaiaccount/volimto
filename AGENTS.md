@@ -1,157 +1,70 @@
-No file path provided — compressing the pasted text directly following the skill rules.
+# VolimTo Agent Rules
 
----
+Slovak political tracker for polls, predictions, coalition simulation, crowd predictions, MP data, and news aggregation.
 
-# VolimTo
+## Session
+- Canonical workspace: `C:\Users\misko\Downloads\volimto`.
+- If user says "continue with HANDOFF.md", read `HANDOFF.md`; otherwise do not load it.
+- Do not create git worktrees unless user explicitly asks.
+- Keep replies concise; `/caveman` is preferred for token-heavy sessions.
 
-Slovak political tracker — polls, predictions, coalition simulations, crowd predictions (tipovanie), news aggregation.
-
-## Session Start
-
-User says "continue with HANDOFF.md" or similar → read `HANDOFF.md` at project root. Contains status, completed work, pending tasks (Phase 1-4), key files, technical notes, design rules. Pick up next incomplete task unless user specifies otherwise.
-
-## Workspace / Worktrees
-
-- Canonical workspace is this repository root: `C:\Users\misko\Downloads\volimto`.
-- Project memory lives in `AGENTS.md` and `HANDOFF.md`; check those before creating parallel state.
-- Do not create new git worktrees for this project unless the user explicitly asks for a new worktree. Use the existing workspace/branch, and if `git worktree list` shows stale entries, prune them instead of creating replacements.
-
-## Tech Stack
-
-- **Framework**: Next.js 16 (App Router) + React 19 + TypeScript
-- **Styling**: TailwindCSS 4
-- **Charts**: Recharts 3
-- **Scraping**: Cheerio (news aggregation)
-- **Database**: Neon Postgres via Drizzle ORM
-- **Deployment**: Vercel
-- **Testing**: Vitest 4 + @vitest/coverage-v8
-- **Linting**: ESLint 9
+## Stack
+- Next.js 16 App Router, React 19, TypeScript
+- TailwindCSS 4, Recharts 3, Cheerio
+- Neon Postgres via Drizzle ORM
+- Vercel deployment
+- Vitest 4, ESLint 9
 
 ## Commands
-
 ```bash
-npm run dev          # Local Next.js dev server
-npm run build        # Next.js production build
-npm run deploy       # Deploy to Vercel production
-npm run preview      # Vercel preview
-npm run db:generate  # Generate Drizzle migrations
-npm run db:migrate   # Apply Drizzle migrations
-npm run db:push      # Push schema directly to Neon (dev only)
-npm run lint         # ESLint
-npm test             # Vitest (single run)
-npm run test:watch   # Vitest watch mode
-npm run test:coverage # Vitest with coverage
+npm run dev
+npm run build
+npm run deploy
+npm run preview
+npm run db:generate
+npm run db:migrate
+npm run db:push
+npm run lint
+npm test
+npm run test:watch
+npm run test:coverage
 ```
 
-## Project Structure
-
-```
-src/
-├── app/                    # Next.js App Router pages
-│   ├── page.tsx            # Homepage — dashboard
-│   ├── prieskumy/          # Polls page
-│   ├── predikcia/          # Prediction model page
-│   ├── tipovanie/          # Crowd predictions (user betting)
-│   ├── koalicny-simulator/ # Coalition simulator
-│   ├── volebny-kalkulator/ # Election calculator
-│   ├── povolebne-plany/    # Post-election plans
-│   ├── podmienky/          # Terms of service
-│   └── sukromie/           # Privacy policy
-├── lib/
-│   └── db/schema.ts        # Drizzle ORM schema (all tables)
-drizzle/                    # Migration files
-public/portraits/           # Party leader WebP portraits
-vercel.json                 # Vercel cron configuration
-drizzle.config.ts           # Drizzle Kit config (d1-http driver)
-```
-
-## Database
-
-- **Connection**: `DATABASE_URL` (Neon Postgres)
-- **Schema**: `src/lib/db/schema.ts`
-- **Tables**: parties, polls, poll_results, predictions, prediction_results, news_items, party_promises, coalition_scenarios, user_predictions, crowd_aggregates, rate_limits
-- **Migrations**: `drizzle/` directory
-
-## Environment Variables
-
-See `.env.example`:
-- `DATABASE_URL` — Neon Postgres connection string
-
-## Conventions
-
-- UI language **Slovak** — all user-facing text in Slovak
-- App Router patterns — server components default, `"use client"` only when needed
-- Political data domain — parties, polls, predictions, coalitions
-- Neon Postgres via Drizzle ORM, type-safe queries
-
-## Context7 — ALWAYS Use for Documentation
-
-Before writing/modifying code using any library below, ALWAYS use context7 MCP (`resolve-library-id` → `get-library-docs`). Do NOT rely on training data.
-
-**Libraries requiring context7 lookup:**
-- **Next.js 16** (App Router) — routing, server components, metadata, caching
-- **React 19** — hooks, server actions, use() API
-- **Drizzle ORM** — queries, schema, migrations, Postgres adapter
-- **Recharts 3** — chart components, data format, customization
-- **TailwindCSS 4** — utility classes, config, new v4 syntax
-- **Cheerio** — selectors, parsing, extraction
-
-Haven't looked up docs this session → stop, use context7 first.
-
-## Fallow - Official Docs and Codebase Intelligence
-
-Use Fallow when a task needs repo-wide TypeScript/JavaScript intelligence: unused code, unused exports, unused dependencies, duplicate code, complexity/health hotspots, architecture boundary drift, feature-flag inventory, or PR quality gates.
-
-Before changing Fallow config, MCP setup, CI integration, suppression syntax, or Fallow CLI usage, fetch current Fallow docs first:
-- Prefer Context7 library `/fallow-rs/docs` for Fallow documentation.
-- If Context7 is unavailable or incomplete, use the official docs index `https://docs.fallow.tools/llms.txt`, then open the specific linked page under `https://docs.fallow.tools/`.
-- Do not rely on training data for Fallow command syntax, config keys, MCP tools, or agent workflow details.
-
-Tooling rules:
-- Prefer the configured `fallow` MCP server for structured analysis when available.
-- CLI fallback is local project Fallow via npm scripts or `npx fallow`.
-- Use JSON output for agent workflows: `npm run fallow`, `npm run fallow:dead-code`, `npm run fallow:dupes`, `npm run fallow:health`, or `npm run fallow:audit`.
-- After code generation or broad refactors, run `npm run fallow:audit` when the change can affect reachability, duplication, complexity, dependency usage, or boundaries.
-- For full cleanup/adoption work, run full-repo analysis first (`npm run fallow`, `npm run fallow:dead-code`, `npm run fallow:dupes`, `npm run fallow:health`), not only `fallow audit`.
-- Run dry-run auto-fix first (`npx fallow fix --dry-run --format json`) and only apply (`npx fallow fix --yes --format json`) after reviewing the proposed edits.
-- Trace before deleting ambiguous findings: use Fallow trace commands/MCP tools for exports, files, dependencies, or duplicate clone fingerprints.
-- Prefer modeling intentional exceptions in Fallow config over repeated inline suppressions; keep any suppression narrow and documented.
-
-## Codex Automations
-
-### Hooks (`.Codex/settings.json`)
-- **PostToolUse**: Auto-lint with ESLint after file edits
-- **PreToolUse**: Block direct edits to `.env*` files and `package-lock.json`
-
-### Skills
-- `/deploy` — Deploy to Vercel
-- `/db-migrate` — Generate and apply Drizzle database migrations
-- `/caveman` — ALWAYS invoke at session start to activate caveman compression mode (saves tokens)
-
-### OpenSpec / OpenCode
-- Use the intent-driven OpenSpec schema for proposal -> specs -> design -> ADR -> tasks workflows.
-- For OpenSpec propose/apply/verify/archive workflows, use the local `openspec-git-discipline` skill to enforce proposal commits before apply and merge-before-archive discipline.
-- OpenSpec artifact rules live in `openspec/config.yaml`; follow the configured local skills for grill-me review, Gherkin specs, C4 design, and ADR authoring.
-- Do not require the user to run `/opsx:*` commands or terminal commands for normal OpenSpec work. Treat natural-language requests as skill triggers and run the required OpenSpec CLI commands internally.
-- Natural-language triggers:
-  - "explore", "think through", "shape this" -> use `openspec-explore`.
-  - "start a change", "new change", "make a spec" -> use `openspec-new-change` or `openspec-propose`.
-  - "propose this", "create the proposal/spec/design/tasks" -> use `openspec-propose`.
-  - "continue", "next artifact", "fill in the spec/design/ADR/tasks" -> use `openspec-continue-change`.
-  - "implement this", "apply it", "build it", "work the tasks" -> use `openspec-apply-change`.
-  - "verify", "validate", "is this ready?" -> use `openspec-verify-change`.
-  - "sync specs" -> use `openspec-sync-specs`.
-  - "archive", "finalize", "close this change" -> use `openspec-archive-change`.
-
-### Subagents
-- `security-reviewer` — Audits credential handling, scraping safety, input sanitization
-
-## Windows / Codex PowerShell
-
-Do not change persistent Windows execution policy for the user or machine. When Codex needs to run npm.ps1 on Windows, use process-only policy:
-
+On Windows, run npm through process-only policy:
 ```powershell
 powershell -NoProfile -ExecutionPolicy RemoteSigned -Command "npm.ps1 <args>"
 ```
 
-Example: `powershell -NoProfile -ExecutionPolicy RemoteSigned -Command "npm.ps1 run build"`.
+## Product Conventions
+- UI language is Slovak.
+- Server components by default; use `"use client"` only when needed.
+- Use existing App Router, Drizzle, data, UI, and Tailwind patterns before adding abstractions.
+- Database changes go through `src/lib/db/schema.ts` and Drizzle migrations.
+- Keep `.env*` and `package-lock.json` protected unless user explicitly asks.
+
+## Context7
+Use Context7 before changing code that depends on current library/framework/API behavior for: Next.js, React, Drizzle ORM, Recharts, TailwindCSS, Cheerio, Fallow, or other cloud/library docs.
+Flow: `resolve-library-id` with the library + task, then `query-docs` with the selected `/org/project` ID and full question.
+Do not use Context7 for pure refactors, business-logic debugging, code review, or writing scripts from scratch.
+
+## Fallow
+Use Fallow for repo-wide TypeScript/JavaScript intelligence: unused code/exports/deps, duplication, complexity, health, boundaries, feature flags, and PR quality gates.
+Prefer Fallow MCP when available; CLI fallback uses local npm scripts such as `npm run fallow`, `npm run fallow:dead-code`, `npm run fallow:dupes`, `npm run fallow:health`, and `npm run fallow:audit`.
+Before changing Fallow config or CLI/MCP workflow, fetch current Fallow docs first, preferably Context7 `/fallow-rs/docs`.
+
+## OpenSpec
+Use intent-driven OpenSpec workflows from natural language:
+- explore/think/shape -> `openspec-explore`
+- start/new/spec/propose -> `openspec-new-change` or `openspec-propose`
+- continue/next artifact -> `openspec-continue-change`
+- implement/apply/build -> `openspec-apply-change`
+- verify/validate/ready -> `openspec-verify-change`
+- sync specs -> `openspec-sync-specs`
+- archive/finalize/close -> `openspec-archive-change`
+
+For OpenSpec propose/apply/verify/archive, use `openspec-git-discipline`. Artifact rules live in `openspec/config.yaml`.
+
+## Local Helpers
+- `/deploy`: deploy to Vercel.
+- `/db-migrate`: generate/apply Drizzle migrations.
+- `security-reviewer`: credential handling, scraping safety, input sanitization.

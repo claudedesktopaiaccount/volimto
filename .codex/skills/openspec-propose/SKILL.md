@@ -1,6 +1,6 @@
 ---
 name: openspec-propose
-description: Automatically propose a new OpenSpec change from natural language. Use when the user describes something to build or fix and wants proposal, specs, design, ADR, and tasks generated, without requiring slash commands or terminal use from the user.
+description: Propose a new OpenSpec change.
 license: MIT
 compatibility: Requires openspec CLI.
 metadata:

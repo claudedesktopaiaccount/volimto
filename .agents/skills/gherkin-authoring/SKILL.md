@@ -1,6 +1,6 @@
 ---
 name: gherkin-authoring
-description: Automatically draft, review, or improve OpenSpec behaviour specs from natural language. Use when spec rules require Gherkin, or when writing Gherkin, Cucumber scenarios, BDD acceptance criteria, feature examples, Scenario Outlines, Backgrounds, Rules, Doc Strings, Data Tables, tags, or Gherkin embedded in Markdown.
+description: Draft or review Gherkin/OpenSpec behavior specs.
 ---
 
 # Gherkin Authoring

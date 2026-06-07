@@ -1,6 +1,6 @@
 ---
 name: openspec-sync-specs
-description: Automatically sync OpenSpec delta specs from natural language. Use when the user asks to sync, update, merge, or copy change specs into main specs without archiving the change.
+description: Sync OpenSpec delta specs.
 license: MIT
 compatibility: Requires openspec CLI.
 metadata:

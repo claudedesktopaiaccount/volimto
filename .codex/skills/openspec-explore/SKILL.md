@@ -1,6 +1,6 @@
 ---
 name: openspec-explore
-description: Automatically explore an OpenSpec idea from natural language. Use when the user wants to think through, brainstorm, investigate, clarify requirements, compare options, or shape a change before proposing or implementing it.
+description: Explore and shape an OpenSpec idea.
 license: MIT
 compatibility: Requires openspec CLI.
 metadata:

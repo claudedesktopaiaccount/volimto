@@ -1,6 +1,6 @@
 ---
 name: openspec-git-discipline
-description: Use when running OpenSpec propose, continue, apply, verify, archive, or worktree workflows where proposal artifacts, branches, merges, or archive timing affect git history.
+description: Enforce git discipline for OpenSpec workflows.
 license: MIT
 compatibility: Requires git and OpenSpec workflow artifacts.
 ---
