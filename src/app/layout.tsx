@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import { DM_Sans, DM_Serif_Display } from "next/font/google";
 import { cookies } from "next/headers";
 import Script from "next/script";
@@ -119,6 +120,7 @@ export default async function RootLayout({
             <PageNumber />
             <GdprBanner />
             <UmamiAnalytics />
+            <Analytics />
             {SHOULD_REGISTER_SERVICE_WORKER ? (
               <Script
                 id="service-worker-registration"
