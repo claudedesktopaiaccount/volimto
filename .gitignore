@@ -51,6 +51,20 @@ yarn-error.log*
 # claude code (entire folder — internal tool config)
 .claude/
 
+# local AI/tooling helpers
+.agents/
+.codex/
+.opencode/
+openspec/
+.fallowrc.json
+opencode.json
+skills-lock.json
+AGENTS.md
+CLAUDE.md
+CLAUDE.original.md
+CODEX_RELEASE_READINESS.md
+claude-code-prompt-enhancer/
+
 # mcp
 .mcp.json
 .playwright-mcp/
