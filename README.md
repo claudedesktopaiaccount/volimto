@@ -2,8 +2,6 @@
 
 Nezávislý agregátor volebných prieskumov a predikcií slovenských parlamentných volieb.
 
-**Live:** https://volimto.sk
-
 ## Čo VolimTo robí
 
 - Agreguje volebné prieskumy z Wikipedie (automatický scraper)
