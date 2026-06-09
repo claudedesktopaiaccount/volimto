@@ -43,6 +43,7 @@ yarn-error.log*
 
 # vercel
 .vercel
+vercel.json
 
 # cloudflare
 .wrangler/
@@ -74,8 +75,12 @@ HANDOFF.md
 docs/superpowers/
 
 # design artifacts
+design_handoff_volimto/
 stitch/
 stitch-prompts.md
+
+# local/optional GitHub automation
+.github/workflows/
 
 # superpowers plugin cache
 .superpowers/
