@@ -8,6 +8,20 @@
       "when": 1779973665232,
       "tag": "0000_baseline_postgres",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1780857624586,
+      "tag": "0001_yummy_mikhail_rasputin",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1780857624587,
+      "tag": "0002_google_owner_login",
+      "breakpoints": true
     }
   ]
 }

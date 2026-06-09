@@ -28,6 +28,49 @@ Historical SQLite/D1/mixed SQL files were archived under `docs/db/legacy-migrati
 
 For an existing Neon branch that already has the baseline schema, create `drizzle.__drizzle_migrations` and insert the baseline marker instead of running `0000_baseline_postgres.sql` over existing tables.
 
+The active baseline is `drizzle/0000_baseline_postgres.sql`, with Drizzle journal tag `0000_baseline_postgres` in `drizzle/meta/_journal.json`. Treat it as the install baseline for new PostgreSQL branches and as a marker-only migration for existing branches that already match `src/lib/db/schema.ts`.
+
+Marker-only SQL for an already-baselined Neon branch:
+
+```sql
+CREATE SCHEMA IF NOT EXISTS drizzle;
+
+CREATE TABLE IF NOT EXISTS drizzle.__drizzle_migrations (
+  id SERIAL PRIMARY KEY,
+  hash text NOT NULL,
+  created_at bigint
+);
+
+INSERT INTO drizzle.__drizzle_migrations (hash, created_at)
+SELECT '52e5c2a71217fda28471f31909d6aba677d1ef0c06ba2fdb25aac342b1c78162', 1779973665232
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM drizzle.__drizzle_migrations
+  WHERE created_at = 1779973665232
+);
+```
+
+The hash above is the SHA-256 of the current checked-in baseline file as of 2026-06-07. Recompute it from the exact checked-in baseline file before applying the marker if `drizzle/0000_baseline_postgres.sql` changes. Do not invent or reuse a hash from another branch.
+
+Use the baseline SQL only for a new empty database or disposable verification branch. Do not run it over an existing shared Neon branch unless the branch was deliberately recreated empty.
+
+## Production Migration Readiness
+
+Before production deploy, verify the target Neon branch in this order:
+
+1. Confirm the branch ID and role point at the intended data branch.
+2. Confirm all runtime tables from `src/lib/db/schema.ts` already exist, or that the branch is empty and will receive the baseline SQL.
+3. Confirm `drizzle.__drizzle_migrations` contains exactly the applied migration history expected for that branch.
+4. Run `npm run db:migrate` only after the target branch and baseline state are reviewed.
+5. Run smoke queries for high-risk constraints and indexes: duplicate votes, API keys, newsletter subscribers, scandals, NRSR imports, and rate limits.
+6. Run the release smoke checklist from `CODEX_RELEASE_READINESS.md`.
+
+Rollback boundary:
+
+- Schema rollback is branch-based: create or retain a Neon branch snapshot before applying production migrations.
+- Application rollback is Vercel-based: keep the previous deployment available until DB and route smoke checks pass.
+- Do not mix a reverted app with a forward-only DB migration unless the migration has been explicitly reviewed for backwards compatibility.
+
 ## Data Patches And Seeds
 
 - Core party seed: `npm run db:seed`.

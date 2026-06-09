@@ -6,6 +6,16 @@ export const metadata: Metadata = {
   description: "Prihláste sa do svojho účtu na VolímTo.",
 };
 
-export default function PrihlaseniePage() {
-  return <PrihlasenieClient />;
+function safeNextPath(next: string | undefined): string | undefined {
+  if (!next || !next.startsWith("/") || next.startsWith("//")) return undefined;
+  return next;
+}
+
+export default async function PrihlaseniePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
+  const { next } = await searchParams;
+  return <PrihlasenieClient nextPath={safeNextPath(next)} />;
 }

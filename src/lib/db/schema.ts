@@ -220,13 +220,16 @@ export const newsletterSubscribers = pgTable(
 export const users = pgTable("users", {
   id: text("id").primaryKey(), // UUID
   email: text("email").notNull(),
-  passwordHash: text("password_hash").notNull(),
+  passwordHash: text("password_hash"),
+  googleSub: text("google_sub"),
   displayName: text("display_name").notNull(),
+  role: text("role").notNull().default("user"),
   createdAt: text("created_at").notNull(),
   emailVerifiedAt: text("email_verified_at"),
   visitorId: text("visitor_id"), // link to legacy cookie-based identity
 }, (table) => [
   uniqueIndex("users_email_unique").on(table.email),
+  uniqueIndex("users_google_sub_unique").on(table.googleSub),
   index("users_visitor_id_idx").on(table.visitorId),
 ]);
 

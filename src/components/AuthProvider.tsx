@@ -6,28 +6,21 @@ export interface AuthUser {
   id: string;
   email: string;
   displayName: string;
+  role: string;
   createdAt: string;
 }
 
 interface AuthContextValue {
   user: AuthUser | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<{ error?: string }>;
   logout: () => Promise<void>;
-  register: (
-    email: string,
-    password: string,
-    displayName: string
-  ) => Promise<{ error?: string }>;
   refetch: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue>({
   user: null,
   isLoading: true,
-  login: async () => ({}),
   logout: async () => {},
-  register: async () => ({}),
   refetch: async () => {},
 });
 
@@ -39,7 +32,7 @@ function getCsrfToken(): string | null {
 
 async function apiPost(path: string, body: Record<string, string>) {
   const csrfToken = getCsrfToken();
-  const res = await fetch(path, {
+  return fetch(path, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -47,7 +40,6 @@ async function apiPost(path: string, body: Record<string, string>) {
     },
     body: JSON.stringify(body),
   });
-  return res;
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -58,7 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const res = await fetch("/api/auth/me");
       if (res.ok) {
-        const data = await res.json() as AuthUser;
+        const data = (await res.json()) as AuthUser;
         setUser(data);
       } else {
         setUser(null);
@@ -74,7 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .then(async (res) => {
         if (cancelled) return;
         if (res.ok) {
-          const data = await res.json() as AuthUser;
+          const data = (await res.json()) as AuthUser;
           if (!cancelled) setUser(data);
         } else {
           setUser(null);
@@ -91,45 +83,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const login = useCallback(
-    async (email: string, password: string): Promise<{ error?: string }> => {
-      const res = await apiPost("/api/auth/login", { email, password });
-      const data = await res.json() as { error?: string; user?: AuthUser };
-      if (!res.ok) {
-        return { error: data.error ?? "Prihlásenie zlyhalo" };
-      }
-      if (data.user) setUser(data.user);
-      await refetch();
-      return {};
-    },
-    [refetch]
-  );
-
   const logout = useCallback(async () => {
     await apiPost("/api/auth/logout", {});
     setUser(null);
   }, []);
 
-  const register = useCallback(
-    async (
-      email: string,
-      password: string,
-      displayName: string
-    ): Promise<{ error?: string }> => {
-      const res = await apiPost("/api/auth/register", { email, password, displayName });
-      const data = await res.json() as { error?: string; user?: AuthUser };
-      if (!res.ok) {
-        return { error: data.error ?? "Registrácia zlyhala" };
-      }
-      if (data.user) setUser(data.user);
-      await refetch();
-      return {};
-    },
-    [refetch]
-  );
-
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout, register, refetch }}>
+    <AuthContext.Provider value={{ user, isLoading, logout, refetch }}>
       {children}
     </AuthContext.Provider>
   );

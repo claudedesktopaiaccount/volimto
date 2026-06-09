@@ -42,6 +42,14 @@ async function ensureSeeded(db: Database) {
   }
 }
 
+function isUniqueViolation(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  const maybeError = error as { code?: unknown; message?: unknown; constraint?: unknown };
+  if (maybeError.code === "23505") return true;
+  const message = typeof maybeError.message === "string" ? maybeError.message : "";
+  return message.includes("UNIQUE constraint failed") || message.includes("duplicate key value");
+}
+
 export async function POST(request: NextRequest) {
   try {
     // CSRF validation: double-submit cookie pattern (timing-safe)
@@ -143,8 +151,7 @@ export async function POST(request: NextRequest) {
         coalitionPick: coalitionPick ? JSON.stringify(coalitionPick) : null,
       });
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "";
-      if (msg.includes("UNIQUE constraint failed")) {
+      if (isUniqueViolation(e)) {
         return NextResponse.json(
           { error: "already_voted" },
           { status: 409 }

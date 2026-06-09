@@ -17,7 +17,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${SITE_URL}/pre-media`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.6 },
     { url: `${SITE_URL}/embed`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.5 },
     { url: `${SITE_URL}/prihlasenie`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.4 },
-    { url: `${SITE_URL}/registracia`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.4 },
     { url: `${SITE_URL}/profil`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.3 },
     { url: `${SITE_URL}/sukromie`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.3 },
     { url: `${SITE_URL}/podmienky`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.3 },

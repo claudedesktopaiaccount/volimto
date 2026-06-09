@@ -11,79 +11,30 @@ vi.mock("@/lib/db", () => ({
   getDb: mocks.getDb,
 }));
 
-function postRequest(path: string, body: unknown, csrf?: string) {
-  const headers = new Headers({ "content-type": "application/json" });
-  if (csrf) {
-    headers.set("cookie", `pt_csrf=${csrf}`);
-    headers.set("x-csrf-token", csrf);
-  }
-
-  return new NextRequest(`https://volimto.test${path}`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body),
-  });
-}
-
-describe("auth route CSRF and validation", () => {
+describe("legacy auth routes", () => {
   beforeEach(() => {
     mocks.getDb.mockReset();
   });
 
-  it("rejects login without matching CSRF before database access", async () => {
+  it("permanently disables password login before database access", async () => {
     const response = await loginPost(
-      postRequest("/api/auth/login", {
-        email: "user@example.com",
-        password: "correct horse battery staple",
-      })
+      new NextRequest("https://volimto.test/api/auth/login", { method: "POST" })
     );
     const body = await response.json();
 
-    expect(response.status).toBe(403);
-    expect(body.error).toBe("CSRF validation failed");
+    expect(response.status).toBe(410);
+    expect(body.error).toContain("Google");
     expect(mocks.getDb).not.toHaveBeenCalled();
   });
 
-  it("rejects login with missing fields before database access", async () => {
-    const response = await loginPost(postRequest("/api/auth/login", {}, "csrf-token"));
-    const body = await response.json();
-
-    expect(response.status).toBe(400);
-    expect(body.error).toBeTruthy();
-    expect(mocks.getDb).not.toHaveBeenCalled();
-  });
-
-  it("rejects registration without matching CSRF before database access", async () => {
+  it("permanently disables password registration before database access", async () => {
     const response = await registerPost(
-      postRequest("/api/auth/register", {
-        email: "user@example.com",
-        password: "correct horse battery staple",
-        displayName: "Tester",
-      })
+      new NextRequest("https://volimto.test/api/auth/register", { method: "POST" })
     );
     const body = await response.json();
 
-    expect(response.status).toBe(403);
-    expect(body.error).toBe("CSRF validation failed");
-    expect(mocks.getDb).not.toHaveBeenCalled();
-  });
-
-  it("rejects invalid registration email before database access", async () => {
-    const response = await registerPost(
-      postRequest(
-        "/api/auth/register",
-        {
-          email: "not-an-email",
-          password: "correct horse battery staple",
-          displayName: "Tester",
-        },
-        "csrf-token"
-      )
-    );
-    const body = await response.json();
-
-    expect(response.status).toBe(400);
-    expect(body.error).toBeTruthy();
+    expect(response.status).toBe(410);
+    expect(body.error).toContain("Google");
     expect(mocks.getDb).not.toHaveBeenCalled();
   });
 });

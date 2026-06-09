@@ -166,8 +166,8 @@ export default function TipovanieClient({ initialCrowd, initialTotalBets, leader
           </div>
           {!user && (
             <div className="mt-4 rounded-lg border border-border bg-subtle p-3 text-center text-body-sm">
-              <Link href="/registracia" className="font-medium text-accent hover:underline">
-                Zaregistruj sa
+              <Link href="/prihlasenie" className="font-medium text-accent hover:underline">
+                Prihlás sa cez Google
               </Link>{" "}
               a sleduj svoje skóre v rebríčku.
             </div>

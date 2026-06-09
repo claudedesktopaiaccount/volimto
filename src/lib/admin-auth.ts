@@ -1,34 +1,40 @@
 import { cookies } from "next/headers";
-import { NextRequest } from "next/server";
+import { type NextRequest } from "next/server";
+import { eq } from "drizzle-orm";
+import { getDb, type Database } from "@/lib/db";
+import { SESSION_COOKIE, validateSession } from "@/lib/auth/session";
+import { users } from "@/lib/db/schema";
 
-async function verifyHmacSession(sessionToken: string, sigHex: string): Promise<boolean> {
-  if (!process.env.ADMIN_SECRET) return false;
-  const encoder = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    "raw", encoder.encode(process.env.ADMIN_SECRET),
-    { name: "HMAC", hash: "SHA-256" }, false, ["verify"]
-  );
-  const sigBytes = new Uint8Array(sigHex.match(/.{2}/g)!.map(b => parseInt(b, 16)));
-  return crypto.subtle.verify("HMAC", key, sigBytes, encoder.encode(sessionToken));
+async function isAdminToken(token: string | undefined, db: Database): Promise<boolean> {
+  if (!token) return false;
+
+  const session = await validateSession(token, db);
+  if (!session) return false;
+
+  const rows = await db
+    .select({ role: users.role })
+    .from(users)
+    .where(eq(users.id, session.userId))
+    .limit(1);
+
+  return rows[0]?.role === "admin";
 }
 
 /**
- * Verify admin session from Next.js cookies() — use inside server actions and RSC.
+ * Verify admin access from Next.js cookies() for server components and server actions.
  */
 export async function isAdminAuthedFromCookies(): Promise<boolean> {
   const cookieStore = await cookies();
-  const sessionToken = cookieStore.get("admin_session")?.value;
-  const sigHex = cookieStore.get("admin_sig")?.value;
-  if (!sessionToken || !sigHex) return false;
-  return verifyHmacSession(sessionToken, sigHex);
+  const sessionToken = cookieStore.get(SESSION_COOKIE)?.value;
+  if (!sessionToken) return false;
+  return isAdminToken(sessionToken, getDb());
 }
 
 /**
- * Verify admin session from a NextRequest — use inside API route handlers.
+ * Verify admin access from a NextRequest for API route handlers.
  */
 export async function isAdminAuthed(req: NextRequest): Promise<boolean> {
-  const sessionToken = req.cookies.get("admin_session")?.value;
-  const sigHex = req.cookies.get("admin_sig")?.value;
-  if (!sessionToken || !sigHex) return false;
-  return verifyHmacSession(sessionToken, sigHex);
+  const sessionToken = req.cookies.get(SESSION_COOKIE)?.value;
+  if (!sessionToken) return false;
+  return isAdminToken(sessionToken, getDb());
 }

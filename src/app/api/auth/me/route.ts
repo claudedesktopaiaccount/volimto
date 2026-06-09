@@ -23,6 +23,7 @@ export async function GET(request: NextRequest) {
         id: users.id,
         email: users.email,
         displayName: users.displayName,
+        role: users.role,
         createdAt: users.createdAt,
       })
       .from(users)

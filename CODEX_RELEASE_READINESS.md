@@ -8,6 +8,26 @@ This file is the Codex handoff for bringing VolimTo to release-ready state. It r
 
 ## Progress Log
 
+### 2026-06-07
+
+- Documented the Drizzle PostgreSQL baseline policy in `docs/db/runbook.md`, including the current baseline hash, marker-only migration procedure for already-baselined Neon branches, production verification order, and rollback boundary.
+- Hardened admin auth:
+  - `admin_sig` verification now fails closed for malformed or non-hex signatures instead of throwing.
+  - `/api/admin/auth` now uses the existing database-backed `rate_limits` table for admin login rate limiting.
+  - Added route/helper tests for admin login rate limiting, signed cookie issuance, malformed signatures, and mismatched signatures.
+- Hardened Stripe routes:
+  - Checkout now fails safely when Stripe config is missing.
+  - Checkout logs raw provider failures server-side but no longer returns provider error details to clients.
+  - Webhook verification now rejects missing config, malformed signatures, invalid hex signatures, stale signatures, and invalid JSON payloads safely.
+  - Added Stripe checkout/webhook route tests for safe errors, signature handling, invalid payloads, and subscription update behavior.
+- Added route/helper coverage for API keys, newsletter unsubscribe, shared cron auth, and PostgreSQL duplicate vote handling in `/api/tipovanie`.
+- Expanded Vitest coverage scope from `src/lib/**/*.ts` to include API route handlers and selected app helpers.
+- Added an initial coverage ratchet for the expanded scope: 46% statements, 41% branches, 49% functions, 49% lines. Current expanded-scope coverage is 46.88% statements, 41.11% branches, 49.25% functions, and 49.52% lines. The 70% lines target remains a follow-up ratchet after broader API/admin/cron tests land.
+- Verified targeted route tests: 6 files, 28 tests passed.
+- Verified `npm test`: 56 files, 363 tests passed.
+- Verified `npm run test:coverage` with expanded scope and initial thresholds.
+- Verified `npm run lint`, `npx tsc --noEmit`, `npm run test:integration`, `npm run build`, `npm audit`, and `npm audit --omit=dev` after the changes.
+
 ### 2026-06-01
 
 - Fixed `npm run test:integration` for Vitest 4 by adding `vitest.integration.config.ts` and replacing the removed `--include` CLI usage with `--config`.
@@ -40,8 +60,8 @@ Verified commands from the audit run:
 | --- | --- | --- |
 | `npm run lint` | Pass | ESLint exited cleanly. |
 | `npx tsc --noEmit` | Pass | TypeScript exited cleanly. |
-| `npm test` | Pass | 51 test files, 340 tests passed. |
-| `npm run test:coverage` | Pass, insufficient | 58.11% statements, 62.10% lines. Coverage excludes important runtime areas. |
+| `npm test` | Pass | 56 test files, 363 tests passed. |
+| `npm run test:coverage` | Pass, expanded initial gate | 46.88% statements, 41.11% branches, 49.25% functions, 49.52% lines after including API route handlers. |
 | `npm run build` | Pass, clean | Exit 0; no Neon errors, no route-generation retries, no 60s static generation timeout observed. |
 | `npm run test:integration` | Pass | 1 file, 2 tests passed through `vitest.integration.config.ts`. |
 | `npm run test:e2e` | Blocked by config | Fails fast: `E2E_DATABASE_URL is required for npm run test:e2e.` No shared DB was used. |
@@ -75,12 +95,13 @@ The repository is not release-ready. Build and integration wiring are now clean,
    - Many old `drizzle/` migrations and snapshots are deleted.
    - New `drizzle/0000_baseline_postgres.sql` exists.
    - Legacy migrations appear moved to `docs/db/legacy-migrations/`.
-   - Required outcome: a reviewer can tell whether the baseline reset is intentional, what DB state it assumes, and exactly how to migrate/verify production.
+   - Current implementation documents the baseline reset, marker-only path, branch verification order, and rollback boundary in `docs/db/runbook.md`.
+   - Remaining required outcome: verify the documented procedure against an isolated Neon branch/test database before production.
 
 4. Critical API route tests are incomplete.
    - Existing tests cover useful pure logic, scrapers, some DB builders, and limited route helpers.
-   - Current implementation covers `/api/v1/polls` CORS/missing-key behavior, scrape-scandals cron auth happy/unauthorized paths, admin import Claude parsing, auth CSRF/basic validation/session missing-token/logout behavior, GDPR CSRF/no-data behavior, newsletter subscribe validation/rate-limit/safe errors, and tipovanie pre-DB validation.
-   - Missing or thin coverage remains for auth database success/failure paths, GDPR data export/delete success paths, tipovanie duplicate/success behavior, newsletter unsubscribe behavior, API keys, Stripe checkout/webhook, admin routes, broader cron auth/idempotency, and public API error paths.
+   - Current implementation covers `/api/v1/polls` CORS/missing-key behavior, scrape-scandals cron auth happy/unauthorized paths, shared cron auth, admin auth rate limiting/signed cookies/malformed signatures, admin import Claude parsing, auth CSRF/basic validation/session missing-token/logout behavior, GDPR CSRF/no-data behavior, newsletter subscribe validation/rate-limit/safe errors, newsletter unsubscribe validation/success behavior, API key list/create/limit behavior, Stripe checkout/webhook safe error/signature behavior, and tipovanie pre-DB validation plus PostgreSQL duplicate vote races.
+   - Missing or thin coverage remains for auth database success/failure paths, GDPR data export/delete success paths, tipovanie full success behavior, broader admin mutation routes, broader cron idempotency, and public API error paths.
    - Required outcome: route-level tests lock status codes, CSRF behavior, validation, error handling, and no-secret-leak behavior.
 
 ### P1 - Should Fix Before Release
@@ -294,12 +315,12 @@ Required release gates:
 Release is allowed only when all items below are true:
 
 - [ ] Dirty worktree reviewed; unrelated user changes preserved.
-- [ ] Migration reset/baseline reviewed and documented.
+- [x] Migration reset/baseline reviewed and documented.
 - [ ] Production environment variables verified.
 - [x] `npm run lint` passes.
 - [x] `npx tsc --noEmit` passes.
 - [x] `npm test` passes.
-- [ ] `npm run test:coverage` passes with expanded scope and accepted thresholds.
+- [x] `npm run test:coverage` passes with expanded scope and accepted thresholds.
 - [x] `npm run test:integration` passes with Vitest 4-compatible config.
 - [x] `npm run build` passes with no DB errors, route timeouts, or hidden fallback failures.
 - [ ] `npm run test:e2e` passes against isolated deterministic test state.
@@ -307,7 +328,7 @@ Release is allowed only when all items below are true:
 - [x] `npm audit --omit=dev` passes.
 - [ ] Critical route tests cover auth, GDPR, newsletter, tipovanie, API keys, Stripe, admin, cron, and public API error paths.
 - [x] `/api/v1/polls` CORS supports `Authorization`.
-- [ ] Admin auth has rate limiting and malformed-cookie tests.
+- [x] Admin auth has rate limiting and malformed-cookie tests.
 - [ ] Public pages degrade gracefully under DB failure where fallback data exists.
 - [ ] Stripe webhook is signature-tested and idempotent.
 - [ ] Cron routes are authenticated and idempotent.

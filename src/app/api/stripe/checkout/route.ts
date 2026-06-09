@@ -17,12 +17,20 @@ export async function POST(req: NextRequest) {
     .select({ email: users.email })
     .from(users)
     .where(eq(users.id, session.userId));
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const siteUrl = "https://volimto.sk";
+  const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+  const stripePriceId = process.env.STRIPE_PRICE_ID;
+  if (!stripeSecretKey || !stripePriceId) {
+    console.error("Stripe checkout configuration is missing.");
+    return NextResponse.json({ error: "Checkout is not configured" }, { status: 500 });
+  }
+
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://volimto.sk";
 
   // Create Stripe Checkout session via REST.
   const params = new URLSearchParams({
-    "line_items[0][price]": process.env.STRIPE_PRICE_ID!,
+    "line_items[0][price]": stripePriceId,
     "line_items[0][quantity]": "1",
     mode: "subscription",
     success_url: `${siteUrl}/api-pristup?upgraded=1`,
@@ -35,15 +43,16 @@ export async function POST(req: NextRequest) {
   const res = await fetch("https://api.stripe.com/v1/checkout/sessions", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}`,
+      Authorization: `Bearer ${stripeSecretKey}`,
       "Content-Type": "application/x-www-form-urlencoded",
     },
     body: params.toString(),
   });
 
   if (!res.ok) {
-    const err = await res.text();
-    return NextResponse.json({ error: "Stripe error", detail: err }, { status: 500 });
+    const detail = await res.text();
+    console.error("Stripe checkout session failed:", detail);
+    return NextResponse.json({ error: "Stripe error" }, { status: 502 });
   }
 
   const checkout = await res.json() as { url: string };

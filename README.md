@@ -55,13 +55,17 @@ npm run test:e2e     # Playwright E2E testy
 Nastav pred deploymentom:
 
 - `DATABASE_URL` z Neon integracie vo Vercel Marketplace
-- `ADMIN_SECRET`
 - `CRON_SECRET`
 - `ANTHROPIC_API_KEY`
 - `RESEND_API_KEY`
 - `STRIPE_SECRET_KEY`
 - `STRIPE_PRICE_ID`
 - `STRIPE_WEBHOOK_SECRET`
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+- `GOOGLE_ALLOWED_EMAILS`
+
+Admin pristup pouziva iba Google OAuth. Prihlasit sa mozu len e-maily v `GOOGLE_ALLOWED_EMAILS`; povoleny ucet sa vytvori ako `users.role = 'admin'`.
 
 Lokalny vyvoj: skopiruj `.env.example` do `.env.local` a dopln hodnoty.
 ## Licencia

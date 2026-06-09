@@ -260,14 +260,6 @@ export default function Navbar({ initialDays }: { initialDays: number }) {
                       >
                         Prihlásiť sa
                       </Link>
-                      <Link
-                        href="/registracia"
-                        role="menuitem"
-                        onClick={() => setUserMenuOpen(false)}
-                        className="block px-3 py-2 text-sm font-medium text-text hover:text-ink hover:bg-hover transition-colors"
-                      >
-                        Registrovať sa
-                      </Link>
                     </>
                   )}
                 </div>
