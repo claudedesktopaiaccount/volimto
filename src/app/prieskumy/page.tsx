@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import SectionHeading from "@/components/ui/SectionHeading";
 import { getAllPolls } from "@/lib/poll-data";
 import { PARTY_LIST } from "@/lib/parties";
+import { getDb } from "@/lib/db";
+import { isStaticBuild, withTimeout } from "@/lib/runtime-data";
 import PrieskumyClient from "./PrieskumyClient";
 
 export const metadata: Metadata = {
@@ -28,7 +30,18 @@ function formatSlovakDate(isoDate?: string): string {
 }
 
 export default async function PrieskumyPage() {
-  const polls = await getAllPolls();
+  let polls: Awaited<ReturnType<typeof getAllPolls>> = [];
+  try {
+    if (!isStaticBuild() && process.env.DATABASE_URL) {
+      const db = getDb();
+      polls = await withTimeout("polls database load", () => getAllPolls(db));
+    }
+  } catch {
+    // fall back to live scraping below
+  }
+  if (polls.length === 0) {
+    polls = await getAllPolls();
+  }
 
   // Build chart data: each poll → { date, partyId: percentage, agency }
   const chartData = polls

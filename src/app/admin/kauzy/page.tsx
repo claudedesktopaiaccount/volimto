@@ -33,16 +33,25 @@ interface AutoReviewResult {
   decision: "approve" | "reject" | "needs_review";
   confidence: number;
   reasonSk: string;
+  model?: string;
   error?: string;
 }
 
 type BusyAction = "save" | "approve" | "reject" | "regenerate" | "auto_review" | "auto_review_queue" | null;
 
+interface QueueProgress {
+  total: number;
+  completed: number;
+  startedAt: number;
+  currentTitle: string;
+  results: AutoReviewResult[];
+}
+
 const STATUSES = [
   { value: "needs_review", label: "Na kontrolu" },
-  { value: "approved", label: "Schvalene" },
-  { value: "rejected", label: "Zamietnute" },
-  { value: "all", label: "Vsetko" },
+  { value: "approved", label: "Schválené" },
+  { value: "rejected", label: "Zamietnuté" },
+  { value: "all", label: "Všetko" },
 ];
 
 async function fetchDraftRows(nextStatus: string) {
@@ -60,6 +69,7 @@ export default function AdminKauzyPage() {
   const [busyAction, setBusyAction] = useState<BusyAction>(null);
   const [loadingDrafts, setLoadingDrafts] = useState(true);
   const [lastAutoReview, setLastAutoReview] = useState<AutoReviewResult | null>(null);
+  const [queueProgress, setQueueProgress] = useState<QueueProgress | null>(null);
   const [regenUrl, setRegenUrl] = useState("");
   const busy = busyAction !== null;
 
@@ -104,11 +114,38 @@ export default function AdminKauzyPage() {
     setBusyAction(null);
     if (!res.ok) {
       const data = await res.json().catch(() => ({})) as { message?: string };
-      setMessage(data.message ?? "Ulozenie zlyhalo.");
+      setMessage(data.message ?? "Uloženie zlyhalo.");
       return;
     }
-    setMessage("Ulozene.");
+    setMessage("Uložené.");
     await reload();
+  }
+
+  async function postAutoReview(draftId: number): Promise<AutoReviewResult> {
+    try {
+      const res = await fetch("/api/admin/kauzy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: draftId, action: "auto_review" }),
+      });
+      const data = await res.json().catch(() => ({})) as { result?: AutoReviewResult; message?: string };
+      if (res.ok && data.result) return data.result;
+      return {
+        id: draftId,
+        decision: "needs_review",
+        confidence: 0,
+        reasonSk: "Automatická kontrola zlyhala; draft zostáva na ručnú kontrolu.",
+        error: data.message ?? "Akcia zlyhala.",
+      };
+    } catch (error) {
+      return {
+        id: draftId,
+        decision: "needs_review",
+        confidence: 0,
+        reasonSk: "Automatická kontrola zlyhala; draft zostáva na ručnú kontrolu.",
+        error: error instanceof Error ? error.message : "unknown_error",
+      };
+    }
   }
 
   async function action(actionName: "approve" | "reject" | "regenerate" | "auto_review") {
@@ -116,6 +153,15 @@ export default function AdminKauzyPage() {
     setBusyAction(actionName);
     setMessage("");
     setLastAutoReview(null);
+    if (actionName === "auto_review") {
+      const result = await postAutoReview(form.id);
+      setBusyAction(null);
+      setLastAutoReview(result);
+      setMessage(formatAutoReviewMessage(result));
+      await reload();
+      return;
+    }
+
     const res = await fetch("/api/admin/kauzy", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -131,15 +177,13 @@ export default function AdminKauzyPage() {
       setMessage(data.message ?? "Akcia zlyhala.");
       return;
     }
-    const data = await res.json().catch(() => ({})) as { result?: AutoReviewResult };
-    if (actionName === "auto_review" && data.result) setLastAutoReview(data.result);
     setMessage(actionName === "approve"
-      ? "Schvalene."
+      ? "Schválené."
       : actionName === "reject"
-        ? "Zamietnute."
+        ? "Zamietnuté."
         : actionName === "regenerate"
-          ? "Regenerovane."
-          : formatAutoReviewMessage(data.result));
+          ? "Regenerované."
+          : "Hotovo.");
     await reload();
   }
 
@@ -147,25 +191,49 @@ export default function AdminKauzyPage() {
     setBusyAction("auto_review_queue");
     setMessage("");
     setLastAutoReview(null);
-    const res = await fetch("/api/admin/kauzy", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "auto_review_queue", limit: 10 }),
-    });
-    setBusyAction(null);
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({})) as { message?: string };
-      setMessage(data.message ?? "Automaticka kontrola fronty zlyhala.");
+    setQueueProgress(null);
+
+    const queue = (await fetchDraftRows("needs_review")).slice(0, 10);
+    if (queue.length === 0) {
+      setBusyAction(null);
+      setMessage("Vo fronte nie sú žiadne drafty na kontrolu.");
+      await reload();
       return;
     }
-    const data = await res.json().catch(() => ({})) as { results?: AutoReviewResult[] };
-    const results = data.results ?? [];
+
+    const startedAt = Date.now();
+    const results: AutoReviewResult[] = [];
+    setQueueProgress({
+      total: queue.length,
+      completed: 0,
+      startedAt,
+      currentTitle: queue[0]?.scandalTitle ?? "",
+      results,
+    });
+
+    for (const [index, draft] of queue.entries()) {
+      setQueueProgress((current) => current ? {
+        ...current,
+        currentTitle: draft.scandalTitle,
+      } : current);
+      const result = await postAutoReview(draft.id);
+      results.push(result);
+      setLastAutoReview(result);
+      setQueueProgress({
+        total: queue.length,
+        completed: index + 1,
+        startedAt,
+        currentTitle: queue[index + 1]?.scandalTitle ?? "",
+        results: [...results],
+      });
+    }
+
+    setBusyAction(null);
     const approved = results.filter((item) => item.decision === "approve").length;
     const rejected = results.filter((item) => item.decision === "reject").length;
     const manual = results.filter((item) => item.decision === "needs_review").length;
     const failed = results.filter((item) => item.error).length;
-    setLastAutoReview(results[0] ?? null);
-    setMessage(`Gemini spracoval ${results.length}: schvalene ${approved}, zamietnute ${rejected}, rucne ${manual}${failed ? `, chyby ${failed}` : ""}.`);
+    setMessage(`Gemini spracoval ${results.length}: schválené ${approved}, zamietnuté ${rejected}, ručne ${manual}${failed ? `, chyby ${failed}` : ""}.`);
     await reload();
   }
 
@@ -177,8 +245,8 @@ export default function AdminKauzyPage() {
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-serif text-2xl font-bold text-ink">Kauzy - review analyz</h1>
-          <p className="mt-1 text-sm text-muted">Publikovane su iba schvalene claimy.</p>
+          <h1 className="font-serif text-2xl font-bold text-ink">Kauzy - review analýz</h1>
+          <p className="mt-1 text-sm text-muted">Publikované sú iba schválené claimy.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button
@@ -187,7 +255,7 @@ export default function AdminKauzyPage() {
             disabled={busy}
             className="border border-ink px-3 py-2 text-sm font-semibold text-ink disabled:opacity-40"
           >
-            {busyAction === "auto_review_queue" ? "Gemini spracuva frontu..." : "Gemini: spracovat 10"}
+            {busyAction === "auto_review_queue" ? "Gemini spracúva frontu..." : "Gemini: spracovať 10"}
           </button>
           <select
             value={status}
@@ -199,14 +267,14 @@ export default function AdminKauzyPage() {
         </div>
       </div>
 
-      <GeminiReviewPanel busyAction={busyAction} lastResult={lastAutoReview} />
+      <GeminiReviewPanel busyAction={busyAction} lastResult={lastAutoReview} queueProgress={queueProgress} />
 
       <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
         <aside className="border border-divider">
           {loadingDrafts ? (
-            <p className="p-4 text-sm text-muted">Nacitavam drafty...</p>
+            <p className="p-4 text-sm text-muted">Načítavam drafty...</p>
           ) : drafts.length === 0 ? (
-            <p className="p-4 text-sm text-muted">Ziadne drafty.</p>
+            <p className="p-4 text-sm text-muted">Žiadne drafty.</p>
           ) : drafts.map((draft) => (
             <button
               key={draft.id}
@@ -234,16 +302,16 @@ export default function AdminKauzyPage() {
               <p className="mt-2 text-xs text-muted">Draft #{form.id} · {form.createdAt}</p>
             </div>
 
-            <Field label="O co ide">
+            <Field label="O čo ide">
               <textarea value={form.caseSummarySk} onChange={(event) => update("caseSummarySk", event.target.value)} rows={4} className={fieldClasses} />
             </Field>
-            <Field label="Verejny zaujem">
+            <Field label="Verejný záujem">
               <textarea value={form.publicInterestSk} onChange={(event) => update("publicInterestSk", event.target.value)} rows={3} className={fieldClasses} />
             </Field>
-            <Field label="Procesny stav">
+            <Field label="Procesný stav">
               <textarea value={form.legalStatusSk} onChange={(event) => update("legalStatusSk", event.target.value)} rows={2} className={fieldClasses} />
             </Field>
-            <Field label="Otvorene otazky">
+            <Field label="Otvorené otázky">
               <textarea value={form.openQuestionsSk} onChange={(event) => update("openQuestionsSk", event.target.value)} rows={2} className={fieldClasses} />
             </Field>
             <Field label="Actor claimy JSON">
@@ -255,13 +323,13 @@ export default function AdminKauzyPage() {
 
             <div className="flex flex-wrap gap-2">
               <button type="button" onClick={save} disabled={busy} className="bg-ink px-4 py-2 text-sm font-semibold text-surface disabled:opacity-40">
-                {busyAction === "save" ? "Ukladam..." : "Ulozit"}
+                {busyAction === "save" ? "Ukladám..." : "Uložiť"}
               </button>
               <button type="button" onClick={() => action("approve")} disabled={busy} className="border border-ink px-4 py-2 text-sm font-semibold text-ink disabled:opacity-40">
-                {busyAction === "approve" ? "Schvalujem..." : "Schvalit"}
+                {busyAction === "approve" ? "Schvaľujem..." : "Schváliť"}
               </button>
               <button type="button" onClick={() => action("reject")} disabled={busy} className="border border-divider px-4 py-2 text-sm font-semibold text-muted disabled:opacity-40">
-                {busyAction === "reject" ? "Zamietam..." : "Zamietnut"}
+                {busyAction === "reject" ? "Zamietam..." : "Zamietnuť"}
               </button>
               <button type="button" onClick={() => action("auto_review")} disabled={busy} className="border border-ink px-4 py-2 text-sm font-semibold text-ink disabled:opacity-40">
                 {busyAction === "auto_review" ? "Gemini pracuje..." : "Gemini review"}
@@ -271,7 +339,7 @@ export default function AdminKauzyPage() {
             <div className="flex flex-wrap gap-2 border border-divider p-3">
               <input value={regenUrl} onChange={(event) => setRegenUrl(event.target.value)} className={cn(fieldClasses, "min-w-72 flex-1")} placeholder="Trusted URL pre regenerovanie" />
               <button type="button" onClick={() => action("regenerate")} disabled={busy || !regenUrl} className="border border-divider px-4 py-2 text-sm font-semibold disabled:opacity-40">
-                {busyAction === "regenerate" ? "Regenerujem..." : "Regenerovat"}
+                {busyAction === "regenerate" ? "Regenerujem..." : "Regenerovať"}
               </button>
             </div>
 
@@ -286,16 +354,23 @@ export default function AdminKauzyPage() {
 function GeminiReviewPanel({
   busyAction,
   lastResult,
+  queueProgress,
 }: {
   busyAction: BusyAction;
   lastResult: AutoReviewResult | null;
+  queueProgress: QueueProgress | null;
 }) {
+  const queuePercent = queueProgress
+    ? Math.round((queueProgress.completed / queueProgress.total) * 100)
+    : 0;
+  const eta = queueProgress ? estimatedQueueRemaining(queueProgress) : null;
+
   return (
     <section className="mb-6 border border-divider p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted">Gemini automatizacia</p>
-          <h2 className="mt-1 text-lg font-bold text-ink">Ako Gemini schvaluje alebo zamieta</h2>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted">Gemini automatizácia</p>
+          <h2 className="mt-1 text-lg font-bold text-ink">Ako Gemini schvaľuje alebo zamieta</h2>
         </div>
         <div className={cn(
           "border px-3 py-2 text-sm font-semibold",
@@ -308,16 +383,35 @@ function GeminiReviewPanel({
           {busyAction?.startsWith("auto_review")
             ? statusTextForBusyAction(busyAction)
             : lastResult
-              ? `Posledne: ${decisionLabel(lastResult.decision)} (${Math.round(lastResult.confidence * 100)}%)`
-              : "Pripravene"}
+              ? `Posledné: ${decisionLabel(lastResult.decision)} (${Math.round(lastResult.confidence * 100)}%)`
+              : "Pripravené"}
         </div>
       </div>
 
       {busyAction?.startsWith("auto_review") && (
         <p className="mt-3 border border-divider bg-hover px-3 py-2 text-sm text-ink">
-          Gemini teraz cita trusted zdroje, vracia strukturovany JSON, server validuje zdroje a podla verdiktu ulozi upravy,
-          schvali, zamietne alebo ponecha draft na rucnu kontrolu.
+          Gemini teraz číta trusted zdroje, vracia štruktúrovaný JSON, server validuje zdroje a podľa verdiktu uloží úpravy,
+          schváli, zamietne alebo ponechá draft na ručnú kontrolu.
         </p>
+      )}
+
+      {queueProgress && (
+        <div className="mt-3 border border-divider p-3">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-sm">
+            <span className="font-semibold text-ink">
+              Fronta: {queueProgress.completed}/{queueProgress.total} ({queuePercent}%)
+            </span>
+            <span className="text-muted">
+              {eta ? `Odhad do konca: ${eta}` : "Odhad po prvom dokončenom drafte"}
+            </span>
+          </div>
+          <div className="h-2 overflow-hidden bg-hover">
+            <div className="h-full bg-ink transition-all" style={{ width: `${queuePercent}%` }} />
+          </div>
+          {busyAction === "auto_review_queue" && queueProgress.currentTitle && (
+            <p className="mt-2 text-xs text-muted">Aktuálne: {queueProgress.currentTitle}</p>
+          )}
+        </div>
       )}
 
       {lastResult && (
@@ -330,9 +424,9 @@ function GeminiReviewPanel({
 
       <div className="mt-4 grid gap-4 lg:grid-cols-4">
         <CriteriaList title="Postup" items={GEMINI_REVIEW_WORKFLOW} />
-        <CriteriaList title="Schvali iba ak" items={GEMINI_APPROVAL_CRITERIA} />
+        <CriteriaList title="Schváli iba ak" items={GEMINI_APPROVAL_CRITERIA} />
         <CriteriaList title="Zamietne ak" items={GEMINI_REJECTION_CRITERIA} />
-        <CriteriaList title="Rucna kontrola ak" items={GEMINI_MANUAL_REVIEW_CRITERIA} />
+        <CriteriaList title="Ručná kontrola ak" items={GEMINI_MANUAL_REVIEW_CRITERIA} />
       </div>
     </section>
   );
@@ -370,19 +464,35 @@ function firstSourceUrl(raw: string) {
 }
 
 function formatAutoReviewMessage(result: AutoReviewResult | undefined) {
-  if (!result) return "Gemini review dokoncil akciu.";
+  if (!result) return "Gemini review dokončil akciu.";
   const confidence = Math.round(result.confidence * 100);
   return `Gemini: ${decisionLabel(result.decision)} (${confidence}%). ${result.reasonSk}`;
 }
 
 function decisionLabel(decision: AutoReviewResult["decision"]) {
-  if (decision === "approve") return "schvalene";
-  if (decision === "reject") return "zamietnute";
-  return "ponechane na rucnu kontrolu";
+  if (decision === "approve") return "schválené";
+  if (decision === "reject") return "zamietnuté";
+  return "ponechané na ručnú kontrolu";
 }
 
 function statusTextForBusyAction(action: BusyAction) {
-  if (action === "auto_review_queue") return "Gemini spracuva frontu";
+  if (action === "auto_review_queue") return "Gemini spracúva frontu";
   if (action === "auto_review") return "Gemini kontroluje draft";
   return "Pracujem";
+}
+
+function estimatedQueueRemaining(progress: QueueProgress) {
+  if (progress.completed === 0) return null;
+  const elapsedMs = Date.now() - progress.startedAt;
+  const averageMs = elapsedMs / progress.completed;
+  const remainingMs = Math.max(0, (progress.total - progress.completed) * averageMs);
+  return formatDuration(remainingMs);
+}
+
+function formatDuration(ms: number) {
+  const totalSeconds = Math.ceil(ms / 1000);
+  if (totalSeconds < 60) return `${totalSeconds} s`;
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return seconds > 0 ? `${minutes} min ${seconds} s` : `${minutes} min`;
 }

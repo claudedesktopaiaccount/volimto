@@ -1,5 +1,7 @@
-import { scrapeWikipediaPolls } from "./scraper/wikipedia";
+import { scrapeWikipediaPolls, type RawPollRow } from "./scraper/wikipedia";
 import { estimateStdDev } from "./prediction/monte-carlo";
+import type { Database } from "./db";
+import { getPollRows } from "./db/polls";
 
 const LAMBDA = 0.023; // 30-day half-life: e^(-0.023*30) ≈ 0.5
 const WINDOW_DAYS = 365;
@@ -13,12 +15,24 @@ export interface AggregatedParty {
   newestPollDate: string;
 }
 
-export async function getAggregatedPolls(): Promise<AggregatedParty[]> {
-  let allPolls;
-  try {
-    allPolls = await scrapeWikipediaPolls();
-  } catch {
-    return [];
+export async function getAggregatedPolls(db?: Database): Promise<AggregatedParty[]> {
+  let allPolls: RawPollRow[] = [];
+
+  if (db) {
+    try {
+      allPolls = await getPollRows(db);
+    } catch (error) {
+      console.error("[poll-aggregate] Failed to load stored polls:", error);
+      allPolls = [];
+    }
+  }
+
+  if (!allPolls || allPolls.length === 0) {
+    try {
+      allPolls = await scrapeWikipediaPolls();
+    } catch {
+      return [];
+    }
   }
 
   if (allPolls.length === 0) return [];

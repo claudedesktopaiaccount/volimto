@@ -5,6 +5,10 @@
       "schedule": "0 9 * * 1"
     },
     {
+      "path": "/api/cron/scrape-polls",
+      "schedule": "15 8 * * *"
+    },
+    {
       "path": "/api/cron/notifications",
       "schedule": "0 10 * * *"
     },

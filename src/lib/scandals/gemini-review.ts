@@ -130,21 +130,30 @@ export async function reviewScandalDraftWithGemini(
           },
         },
       },
-      maxOutputTokens: 1800,
+      maxOutputTokens: 8192,
       temperature: 0.1,
     },
   });
 
-  return sanitizeReview(parseReviewJson(response.text ?? ""), input, model);
+  const parsed = parseReviewJson(response.text ?? "");
+  if (!parsed.ok) {
+    return manualReviewFallback(
+      input,
+      model,
+      "Gemini vrátil neúplný alebo neplatný JSON; draft zostáva na ručnú kontrolu bez automatickej zmeny."
+    );
+  }
+
+  return sanitizeReview(parsed.value, input, model);
 }
 
 function buildPrompt(input: ScandalGeminiReviewInput) {
   const payload = {
     pravidla: [
-      "Si neutralny slovensky editor politickeho trackera.",
-      "Nevymyslaj fakty, osoby, pravny stav ani citacie. Pouzi iba prilozene trusted zdroje.",
-      "Kazdy statementSk formuluj ako zdrojovo pripisane tvrdenie, nie ako vlastny zaver.",
-      "counterpointSk pouzi na prezumpciu neviny alebo procesne obmedzenie, ked je vec neuzavreta.",
+      "Si neutrálny slovenský editor politického trackera.",
+      "Nevymýšľaj fakty, osoby, právny stav ani citácie. Použi iba priložené trusted zdroje.",
+      "Každý statementSk formuluj ako zdrojovo pripísané tvrdenie, nie ako vlastný záver.",
+      "counterpointSk použi na prezumpciu neviny alebo procesné obmedzenie, keď je vec neuzavretá.",
     ],
     workflow: GEMINI_REVIEW_WORKFLOW,
     schvalIbaAk: GEMINI_APPROVAL_CRITERIA,
@@ -161,15 +170,33 @@ function buildPrompt(input: ScandalGeminiReviewInput) {
   };
 
   return [
-    "Vrat iba JSON podla schema. Nepouzivaj markdown.",
-    "Vsetky textove polia pis po slovensky.",
+    "Vráť iba JSON podľa schema. Nepoužívaj markdown.",
+    "Všetky textové polia píš po slovensky.",
     JSON.stringify(payload),
   ].join("\n");
 }
 
-function parseReviewJson(raw: string): unknown {
+function parseReviewJson(raw: string): { ok: true; value: unknown } | { ok: false } {
   const json = raw.match(/\{[\s\S]*\}/)?.[0] ?? raw;
-  return JSON.parse(json) as unknown;
+  try {
+    return { ok: true, value: JSON.parse(json) as unknown };
+  } catch {
+    return { ok: false };
+  }
+}
+
+function manualReviewFallback(
+  input: ScandalGeminiReviewInput,
+  model: string,
+  reasonSk: string
+): ScandalGeminiReviewResult {
+  return {
+    decision: "needs_review",
+    confidence: 0,
+    reasonSk,
+    revisedDraft: input.draft,
+    model,
+  };
 }
 
 function sanitizeReview(
@@ -194,7 +221,7 @@ function sanitizeReview(
   return {
     decision,
     confidence: clampNumber(value.confidence, 0, 1, 0),
-    reasonSk: normalizeText(value.reasonSk, "Gemini vratil nekompletny dovod rozhodnutia.").slice(0, 600),
+    reasonSk: normalizeText(value.reasonSk, "Gemini vrátil nekompletný dôvod rozhodnutia.").slice(0, 600),
     revisedDraft: {
       caseSummarySk: normalizeText(revised.caseSummarySk, input.draft.caseSummarySk).slice(0, 1_200),
       publicInterestSk: normalizeText(revised.publicInterestSk, input.draft.publicInterestSk).slice(0, 800),

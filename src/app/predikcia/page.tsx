@@ -21,7 +21,18 @@ export const metadata: Metadata = {
 export const revalidate = 21600;
 
 export default async function PredikciaPage() {
-  const aggregated = await getAggregatedPolls();
+  let aggregated: Awaited<ReturnType<typeof getAggregatedPolls>> = [];
+  try {
+    if (!isStaticBuild() && process.env.DATABASE_URL) {
+      const db = getDb();
+      aggregated = await withTimeout("prediction polls", () => getAggregatedPolls(db));
+    }
+  } catch {
+    // fall back to live scraping below
+  }
+  if (aggregated.length === 0) {
+    aggregated = await getAggregatedPolls();
+  }
 
   let inputs: PartyInput[];
   let pollCount: number;
@@ -40,7 +51,17 @@ export default async function PredikciaPage() {
     );
   } else {
     // Fallback: single latest poll with hardcoded stdDev brackets
-    const pollData = await getLatestPolls();
+    let pollData: Awaited<ReturnType<typeof getLatestPolls>>;
+    try {
+      if (!isStaticBuild() && process.env.DATABASE_URL) {
+        const db = getDb();
+        pollData = await withTimeout("latest prediction poll", () => getLatestPolls(db));
+      } else {
+        pollData = await getLatestPolls();
+      }
+    } catch {
+      pollData = await getLatestPolls();
+    }
     inputs = pollData.parties.map((p) => ({
       partyId: p.partyId,
       meanPct: p.percentage,

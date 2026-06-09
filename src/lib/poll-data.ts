@@ -2,6 +2,7 @@ import { scrapeWikipediaPolls, type RawPollRow } from "./scraper/wikipedia";
 import { PARTY_LIST } from "./parties";
 import type { Database } from "./db";
 import { polls, pollResults } from "./db/schema";
+import { getPollRows } from "./db/polls";
 import { desc, eq } from "drizzle-orm";
 
 export interface LatestPollData {
@@ -31,6 +32,13 @@ export interface PollSummary {
 export async function getLatestPolls(db?: Database): Promise<PollSummary> {
   let scrapedPolls: RawPollRow[];
 
+  if (db) {
+    const dbPolls = await getStoredPolls(db);
+    if (dbPolls.length > 0) {
+      return buildPollSummary(dbPolls);
+    }
+  }
+
   try {
     scrapedPolls = await scrapeWikipediaPolls();
   } catch (error) {
@@ -51,8 +59,37 @@ export async function getLatestPolls(db?: Database): Promise<PollSummary> {
     return getFallbackData();
   }
 
-  const latest = scrapedPolls[0];
-  const previous = scrapedPolls.length > 1 ? scrapedPolls[1] : null;
+  return buildPollSummary(scrapedPolls);
+}
+
+/**
+ * Get all scraped polls for the charts page.
+ */
+export async function getAllPolls(db?: Database): Promise<RawPollRow[]> {
+  if (db) {
+    const dbPolls = await getStoredPolls(db);
+    if (dbPolls.length > 0) return dbPolls;
+  }
+
+  try {
+    return await scrapeWikipediaPolls();
+  } catch {
+    return [];
+  }
+}
+
+async function getStoredPolls(db: Database): Promise<RawPollRow[]> {
+  try {
+    return await getPollRows(db);
+  } catch (error) {
+    console.error("Failed to load stored polls:", error);
+    return [];
+  }
+}
+
+function buildPollSummary(polls: RawPollRow[]): PollSummary {
+  const latest = polls[0];
+  const previous = polls.length > 1 ? polls[1] : null;
 
   const partyData: LatestPollData[] = PARTY_LIST
     .map((party) => {
@@ -80,19 +117,8 @@ export async function getLatestPolls(db?: Database): Promise<PollSummary> {
     parties: partyData,
     latestAgency: latest.agency,
     latestDate: formatSlovakDate(latest.publishedDate),
-    pollCount: scrapedPolls.length,
+    pollCount: polls.length,
   };
-}
-
-/**
- * Get all scraped polls for the charts page.
- */
-export async function getAllPolls(): Promise<RawPollRow[]> {
-  try {
-    return await scrapeWikipediaPolls();
-  } catch {
-    return [];
-  }
 }
 
 function formatSlovakDate(isoDate: string): string {

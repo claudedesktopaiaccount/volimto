@@ -1,6 +1,6 @@
 import * as cheerio from "cheerio";
 
-const WIKI_URL =
+export const WIKIPEDIA_POLLS_URL =
   "https://en.wikipedia.org/wiki/Opinion_polling_for_the_next_Slovak_parliamentary_election";
 
 /**
@@ -200,7 +200,7 @@ function buildColumnMap(
 }
 
 export async function scrapeWikipediaPolls(): Promise<RawPollRow[]> {
-  const response = await fetch(WIKI_URL, {
+  const response = await fetch(WIKIPEDIA_POLLS_URL, {
     signal: AbortSignal.timeout(10_000),
     headers: {
       "User-Agent":

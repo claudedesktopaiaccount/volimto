@@ -4,6 +4,7 @@ export default function AdminDashboard() {
   const sections = [
     { href: "/admin/promises", label: "Programové sľuby strán", desc: "Pridať, importovať a zmazať sľuby" },
     { href: "/admin/polls", label: "Manuálne zadanie prieskumu", desc: "Pridať výsledky prieskumu" },
+    { href: "/admin/scrapers", label: "Scrapery", desc: "Spustiť importy jednotlivo alebo spolu" },
     { href: "/admin/kalkulator", label: "Volebný kalkulátor", desc: "Upraviť váhy odpovedí pre strany" },
     { href: "/admin/kauzy", label: "Kauzy", desc: "Skontrolovať a schváliť AI analýzy" },
   ];

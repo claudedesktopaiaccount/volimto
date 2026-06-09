@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import SectionHeading from "@/components/ui/SectionHeading";
 import { getLatestPolls } from "@/lib/poll-data";
+import { getDb } from "@/lib/db";
+import { isStaticBuild, withTimeout } from "@/lib/runtime-data";
 import KoalicnyClient from "./KoalicnyClient";
 
 export const metadata: Metadata = {
@@ -15,7 +17,17 @@ export const metadata: Metadata = {
 export const revalidate = 21600;
 
 export default async function KoalicnySimulatorPage() {
-  const pollData = await getLatestPolls();
+  let pollData: Awaited<ReturnType<typeof getLatestPolls>>;
+  try {
+    if (!isStaticBuild() && process.env.DATABASE_URL) {
+      const db = getDb();
+      pollData = await withTimeout("coalition polls", () => getLatestPolls(db));
+    } else {
+      pollData = await getLatestPolls();
+    }
+  } catch {
+    pollData = await getLatestPolls();
+  }
 
   const pollResults = pollData.parties.map((p) => ({
     partyId: p.partyId,

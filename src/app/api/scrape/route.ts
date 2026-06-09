@@ -1,18 +1,22 @@
 import { NextRequest } from "next/server";
 import { scrapeWikipediaPolls } from "@/lib/scraper/wikipedia";
+import { getDb } from "@/lib/db";
+import { importPollRows } from "@/lib/db/polls";
+import { isCronAuthed } from "@/lib/cron-auth";
 import { createSentry, captureException } from "@/lib/sentry";
 
 export async function GET(req: NextRequest) {
-  const secret = req.headers.get("x-cron-secret");
-  if (secret !== process.env.CRON_SECRET) {
+  if (!(await isCronAuthed(req))) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
     const polls = await scrapeWikipediaPolls();
+    const summary = await importPollRows(getDb(), polls);
     return Response.json({
       success: true,
-      count: polls.length,
+      ...summary,
+      count: summary.scraped,
       latest: polls.slice(0, 5),
       parties: polls.length > 0 ? Object.keys(polls[0].results) : [],
     });
