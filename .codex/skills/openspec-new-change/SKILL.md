@@ -17,10 +17,10 @@ Start a new change using the experimental artifact-driven approach.
 
 1. **If no clear input provided, ask what they want to build**
 
-   Use the **AskUserQuestion tool** (open-ended, no preset options) to ask:
+   Ask a concise open-ended question:
    > "What change do you want to work on? Describe what you want to build or fix."
 
-   From their description, derive a kebab-case name (e.g., "add user authentication" → `add-user-auth`).
+   From their description, derive a kebab-case name (e.g., "add user authentication" -> `add-user-auth`).
 
    **IMPORTANT**: Do NOT proceed without understanding what the user wants to build.
 
@@ -29,8 +29,8 @@ Start a new change using the experimental artifact-driven approach.
    Use the default schema (omit `--schema`) unless the user explicitly requests a different workflow.
 
    **Use a different schema only if the user mentions:**
-   - A specific schema name → use `--schema <name>`
-   - "show workflows" or "what workflows" → run `openspec schemas --json` and let them choose
+   - A specific schema name -> use `--schema <name>`
+   - "show workflows" or "what workflows" -> run `openspec schemas --json` and let them choose
 
    **Otherwise**: Omit `--schema` to use the default.
 

@@ -7,13 +7,13 @@ const ITERATIONS = 100_000;
 const KEY_LENGTH = 32; // 256 bits
 const SALT_LENGTH = 16; // 128 bits
 
-function bufferToHex(buffer: ArrayBuffer): string {
-  return Array.from(new Uint8Array(buffer))
+function bytesToHex(bytes: Uint8Array): string {
+  return Array.from(bytes)
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
 }
 
-function hexToBuffer(hex: string): Uint8Array {
+function hexToBytes(hex: string): Uint8Array {
   const bytes = new Uint8Array(hex.length / 2);
   for (let i = 0; i < hex.length; i += 2) {
     bytes[i / 2] = parseInt(hex.slice(i, i + 2), 16);
@@ -50,7 +50,7 @@ async function deriveKey(password: string, salt: Uint8Array): Promise<ArrayBuffe
 export async function hashPassword(password: string): Promise<string> {
   const salt = crypto.getRandomValues(new Uint8Array(SALT_LENGTH));
   const derived = await deriveKey(password, salt);
-  return `${bufferToHex(salt.buffer as ArrayBuffer)}:${bufferToHex(derived)}`;
+  return `${bytesToHex(salt)}:${bytesToHex(new Uint8Array(derived))}`;
 }
 
 /**
@@ -65,9 +65,9 @@ export async function verifyPassword(password: string, stored: string): Promise<
   if (!saltHex || !hashHex) return false;
 
   try {
-    const salt = hexToBuffer(saltHex);
+    const salt = hexToBytes(saltHex);
     const derived = await deriveKey(password, salt);
-    const derivedHex = bufferToHex(derived);
+    const derivedHex = bytesToHex(new Uint8Array(derived));
 
     // Constant-time comparison to prevent timing attacks
     if (derivedHex.length !== hashHex.length) return false;

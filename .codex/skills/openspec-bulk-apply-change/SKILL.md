@@ -2,7 +2,7 @@
 name: openspec-bulk-apply-change
 description: Coordinate multiple OpenSpec changes.
 license: MIT
-compatibility: Requires git, OpenSpec CLI, and OpenCode subagents.
+compatibility: Requires git, OpenSpec CLI, worktree approval, and multi-agent capability.
 metadata:
   author: openspec
   version: "1.0"
@@ -11,18 +11,20 @@ metadata:
 
 # OpenSpec Bulk Apply
 
-Apply multiple active OpenSpec changes by creating isolated worktrees, dispatching delegated apply flows in parallel subagents, running verification in each flow, and reporting back without merging or archiving.
+Apply multiple active OpenSpec changes by creating isolated worktrees, dispatching delegated apply flows in parallel agents, running verification in each flow, and reporting back without merging or archiving.
 
 **REQUIRED SUB-SKILL:** Use `openspec-git-discipline` before any apply or worktree workflow.
 
 ## When to Use
 
 - More than one active OpenSpec change exists
-- `/opsx-bulk-apply` was invoked without an explicit single-change target
+- The user explicitly asks for a bulk OpenSpec apply workflow
 - The user wants multiple changes applied in parallel
 - The user asks to apply all active OpenSpec changes
 
-Do not use bulk mode when only one candidate change remains. Stop and tell the user to use `/opsx-apply <change>` instead.
+Do not use bulk mode when only one candidate change remains. Stop and tell the user to use `openspec-apply-change` for that change instead.
+
+VolimTo project policy forbids creating git worktrees unless the user explicitly asks. If the user asks to apply all changes but does not explicitly approve worktrees, stop and ask whether to create isolated worktrees under `.worktrees/<change>`.
 
 ## Steps
 
@@ -35,7 +37,7 @@ Do not use bulk mode when only one candidate change remains. Stop and tell the u
    ```
 
    - If command input included change names, limit analysis to those changes.
-   - If fewer than 2 active candidate changes remain, stop and tell the user to use `/opsx-apply <change>`.
+   - If fewer than 2 active candidate changes remain, stop and tell the user to use `openspec-apply-change` for that change.
    - Do not ask the user to choose one change when 2 or more candidates remain and the request is clearly bulk apply.
 
 2. **Run git discipline checks**
@@ -66,26 +68,28 @@ Do not use bulk mode when only one candidate change remains. Stop and tell the u
 
 4. **Create isolated worktrees**
 
+   Before this step, confirm the user explicitly approved worktree creation. If not, stop and ask for that approval.
+
    For each executable candidate change:
 
    - Create a git worktree under `.worktrees/<change>` unless the user specified another root.
    - Keep the parent agent out of direct implementation work in the main workspace.
    - Do not create commits, branches, or merges unless the user explicitly approved them.
 
-5. **Dispatch subagents in parallel**
+5. **Dispatch delegated agents in parallel**
 
    For each executable candidate change:
 
-   - Dispatch one subagent in that change's worktree.
+   - Dispatch one delegated agent in that change's worktree when a multi-agent tool is available.
    - Run all delegated apply flows in parallel.
    - Do not apply any change directly in the parent agent.
 
-   Subagent prompt requirements:
+   Delegated prompt requirements:
 
    - Work only in the assigned worktree.
    - Use `openspec-git-discipline` before applying.
-   - Run `/opsx-apply <change>`.
-   - Run `/opsx-verify <change>` after apply work is complete.
+   - Use `openspec-apply-change` for `<change>`.
+   - Use `openspec-verify-change` for `<change>` after apply work is complete.
    - Stop after verification.
    - Do not merge, archive, or commit unless explicitly instructed by the parent prompt.
    - Return implementation outcome, verification status, changed files, blockers, and unresolved warnings.
@@ -108,7 +112,7 @@ Do not use bulk mode when only one candidate change remains. Stop and tell the u
    - Changes skipped and why
    - Worktrees created
    - Apply result per change
-   - `/opsx-verify` result per change
+   - Verification result per change
    - Which changes are ready for human review
 
    End with: "No merge or archive was performed. Explicit user approval is required before any merge or archive."
@@ -119,10 +123,10 @@ Do not use bulk mode when only one candidate change remains. Stop and tell the u
 | --- | --- |
 | 2+ active candidates | Bulk apply in isolated worktrees |
 | Explicit list of 2+ changes | Bulk apply only those changes |
-| 1 candidate | Stop and use `/opsx-apply <change>` |
+| 1 candidate | Stop and use `openspec-apply-change` |
 | Proposal not on `main` | Exclude or stop before apply |
 | Blocked or all-done change | Skip execution and report status |
-| Subagent finishes apply | Require `/opsx-verify <change>` before review-ready |
+| Delegated agent finishes apply | Require `openspec-verify-change` before review-ready |
 | User asks to merge/archive | Stop and require explicit follow-up approval |
 
 ## Common Mistakes
@@ -130,9 +134,9 @@ Do not use bulk mode when only one candidate change remains. Stop and tell the u
 | Mistake | Fix |
 | --- | --- |
 | Asking user to pick one change for a bulk request | Keep all executable candidates when 2+ remain |
-| Running apply in the parent workspace | Dispatch one subagent per worktree |
+| Running apply in the parent workspace | Dispatch one delegated agent per worktree |
 | Processing changes sequentially | Dispatch independent apply flows in parallel |
-| Reporting ready after apply only | Require `/opsx-verify <change>` first |
+| Reporting ready after apply only | Require `openspec-verify-change` first |
 | Treating verify as permission to merge | Report only; merge needs explicit approval |
 | Archiving after verify | Never archive during bulk apply |
 
@@ -141,8 +145,8 @@ Do not use bulk mode when only one candidate change remains. Stop and tell the u
 - Do not auto-merge.
 - Do not auto-archive.
 - Do not bulk-apply when only one candidate change remains.
-- Do not perform apply work in the parent agent; use subagents only.
+- Do not perform apply work in the parent agent; use delegated agents only.
 - Do not run bulk apply in the main workspace; use isolated worktrees only.
 - Keep `.worktrees/` as the default worktree root unless the user specifies another location.
-- Require `/opsx-verify` in every delegated apply flow before reporting a change as review-ready.
+- Require `openspec-verify-change` in every delegated apply flow before reporting a change as review-ready.
 - Preserve OpenSpec git discipline: apply only changes whose proposal state has reached `main`.

@@ -20,9 +20,9 @@ Implement tasks from an OpenSpec change.
    If a name is provided, use it. Otherwise:
    - Infer from conversation context if the user mentioned a change
    - Auto-select if only one active change exists
-   - If ambiguous, run `openspec list --json` to get available changes and use the **AskUserQuestion tool** to let the user select
+   - If ambiguous, run `openspec list --json` to get available changes and ask the user to select
 
-   Always announce: "Using change: <name>" and how to override (e.g., `/opsx:apply <other>`).
+   Always announce: "Using change: <name>" and how to override (e.g., "apply <other change>").
 
 2. **Check status to understand the schema**
    ```bash
@@ -70,13 +70,13 @@ Implement tasks from an OpenSpec change.
    - Show which task is being worked on
    - Make the code changes required
    - Keep changes minimal and focused
-   - Mark task complete in the tasks file: `- [ ]` → `- [x]`
+   - Mark task complete in the tasks file: `- [ ]` -> `- [x]`
    - Continue to next task
 
    **Pause if:**
-   - Task is unclear → ask for clarification
-   - Implementation reveals a design issue → suggest updating artifacts
-   - Error or blocker encountered → report and wait for guidance
+   - Task is unclear -> ask for clarification
+   - Implementation reveals a design issue -> suggest updating artifacts
+   - Error or blocker encountered -> report and wait for guidance
    - User interrupts
 
 7. **On completion or pause, show status**
@@ -94,11 +94,11 @@ Implement tasks from an OpenSpec change.
 
 Working on task 3/7: <task description>
 [...implementation happening...]
-✓ Task complete
+[ok] Task complete
 
 Working on task 4/7: <task description>
 [...implementation happening...]
-✓ Task complete
+[ok] Task complete
 ```
 
 **Output On Completion**
@@ -108,7 +108,7 @@ Working on task 4/7: <task description>
 
 **Change:** <change-name>
 **Schema:** <schema-name>
-**Progress:** 7/7 tasks complete ✓
+**Progress:** 7/7 tasks complete
 
 ### Completed This Session
 - [x] Task 1

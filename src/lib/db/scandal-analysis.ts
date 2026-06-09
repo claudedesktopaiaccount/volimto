@@ -17,6 +17,12 @@ import {
   type ScandalAnalysisDraftInput,
   type ScandalDraftReviewStatus,
 } from "@/lib/scandals/analysis";
+import { fetchTrustedScandalPageText } from "@/lib/scandals/fetch-page";
+import {
+  reviewScandalDraftWithGemini,
+  type ScandalGeminiDecision,
+} from "@/lib/scandals/gemini-review";
+import { GEMINI_REVIEW_MODEL_DEFAULT } from "@/lib/scandals/review-criteria";
 import { classifyScandalSource } from "@/lib/scandals/trusted-sources";
 
 export interface ScandalAnalysisDraftRow {
@@ -34,6 +40,15 @@ export interface ScandalAnalysisDraftRow {
   model: string;
   createdAt: string;
   reviewedAt: string | null;
+}
+
+export interface ScandalAutoReviewResult {
+  id: number;
+  decision: ScandalGeminiDecision;
+  confidence: number;
+  reasonSk: string;
+  model: string;
+  error?: string;
 }
 
 export async function listScandalAnalysisDrafts(
@@ -180,6 +195,65 @@ export async function approveScandalAnalysisDraft(db: Database, draftId: number)
     .where(eq(scandalAnalysisDrafts.id, draftId));
 }
 
+export async function autoReviewScandalAnalysisDraft(
+  db: Database,
+  draftId: number,
+  apiKey: string | undefined
+): Promise<ScandalAutoReviewResult> {
+  const input = await buildGeminiReviewInput(db, draftId);
+  const review = await reviewScandalDraftWithGemini(input, apiKey);
+
+  await saveScandalAnalysisDraft(db, draftId, {
+    caseSummarySk: review.revisedDraft.caseSummarySk,
+    publicInterestSk: review.revisedDraft.publicInterestSk,
+    legalStatusSk: review.revisedDraft.legalStatusSk,
+    openQuestionsSk: review.revisedDraft.openQuestionsSk,
+    actorClaimsJson: serializeActorClaims(review.revisedDraft.actorClaims),
+    sourceUrlsJson: JSON.stringify(review.revisedDraft.sourceUrls),
+    model: `${review.model}-auto-review`,
+  });
+
+  if (review.decision === "approve") {
+    await approveScandalAnalysisDraft(db, draftId);
+  } else if (review.decision === "reject") {
+    await rejectScandalAnalysisDraft(db, draftId);
+  }
+
+  return {
+    id: draftId,
+    decision: review.decision,
+    confidence: review.confidence,
+    reasonSk: review.reasonSk,
+    model: review.model,
+  };
+}
+
+export async function autoReviewScandalAnalysisDraftQueue(
+  db: Database,
+  apiKey: string | undefined,
+  limit = 10
+): Promise<ScandalAutoReviewResult[]> {
+  const drafts = await listScandalAnalysisDrafts(db, "needs_review");
+  const results: ScandalAutoReviewResult[] = [];
+
+  for (const draft of drafts.slice(0, Math.max(1, Math.min(25, limit)))) {
+    try {
+      results.push(await autoReviewScandalAnalysisDraft(db, draft.id, apiKey));
+    } catch (error) {
+      results.push({
+        id: draft.id,
+        decision: "needs_review",
+        confidence: 0,
+        reasonSk: "Automaticka kontrola zlyhala; draft zostava na rucnu kontrolu.",
+        model: process.env.GEMINI_KAUZY_MODEL || GEMINI_REVIEW_MODEL_DEFAULT,
+        error: errorMessage(error),
+      });
+    }
+  }
+
+  return results;
+}
+
 export async function regenerateScandalAnalysisDraft(db: Database, draftId: number, pageText: string) {
   const draft = await getDraft(db, draftId);
   if (!draft) throw new Error("draft_not_found");
@@ -261,6 +335,86 @@ async function buildDraftInputForScandal(
   return createScandalAnalysisDraft({ scandal, actors, sources, pageText });
 }
 
+async function buildGeminiReviewInput(db: Database, draftId: number) {
+  const draft = await getDraft(db, draftId);
+  if (!draft) throw new Error("draft_not_found");
+
+  const [scandal] = await db
+    .select({
+      titleSk: scandals.titleSk,
+      summarySk: scandals.summarySk,
+      status: scandals.status,
+      institutionInvestigating: scandals.institutionInvestigating,
+    })
+    .from(scandals)
+    .where(eq(scandals.id, draft.scandalId));
+  if (!scandal) throw new Error("scandal_not_found");
+
+  const [actors, sources] = await Promise.all([
+    db
+      .select({
+        mpId: mps.id,
+        nameDisplay: mps.nameDisplay,
+        roleInScandal: scandalPoliticianLinks.roleInScandal,
+      })
+      .from(scandalPoliticianLinks)
+      .innerJoin(mps, eq(scandalPoliticianLinks.mpId, mps.id))
+      .where(eq(scandalPoliticianLinks.scandalId, draft.scandalId))
+      .orderBy(asc(mps.nameDisplay)),
+    db
+      .select({
+        url: scandalSources.url,
+      })
+      .from(scandalSources)
+      .where(eq(scandalSources.scandalId, draft.scandalId))
+      .orderBy(desc(scandalSources.isPrimary)),
+  ]);
+
+  const actorClaims = safeParseActorClaimsJson(draft.actorClaimsJson);
+  const sourceUrls = [
+    ...sourceUrlsFromJson(draft.sourceUrlsJson),
+    ...actorClaims.map((claim) => claim.sourceUrl),
+    ...sources.map((source) => source.url),
+  ].filter((url) => classifyScandalSource(url).trusted);
+  const sourceTexts = await fetchSourceTexts(sourceUrls.slice(0, 3));
+
+  return {
+    scandal,
+    draft: {
+      caseSummarySk: draft.caseSummarySk,
+      publicInterestSk: draft.publicInterestSk,
+      legalStatusSk: draft.legalStatusSk,
+      openQuestionsSk: draft.openQuestionsSk,
+      actorClaims,
+      sourceUrls: [...new Set(sourceUrls)],
+    },
+    actors,
+    sourceTexts,
+  };
+}
+
+async function fetchSourceTexts(urls: string[]) {
+  const settled = await Promise.allSettled(
+    [...new Set(urls)].map(async (url) => ({
+      url,
+      text: await fetchTrustedScandalPageText(url),
+    }))
+  );
+
+  return settled
+    .filter((result): result is PromiseFulfilledResult<{ url: string; text: string }> => result.status === "fulfilled")
+    .map((result) => result.value)
+    .filter((source) => source.text.trim().length > 0);
+}
+
+function safeParseActorClaimsJson(raw: string) {
+  try {
+    return parseActorClaimsJson(raw);
+  } catch {
+    return [];
+  }
+}
+
 async function getDraft(db: Database, draftId: number) {
   const [draft] = await db
     .select()
@@ -302,4 +456,8 @@ async function ensureScandalSources(db: Database, scandalId: number, urls: strin
   }
 
   return sourceIdByUrl;
+}
+
+function errorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "unknown_error";
 }

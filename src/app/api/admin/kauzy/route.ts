@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { isAdminAuthed } from "@/lib/admin-auth";
 import {
+  autoReviewScandalAnalysisDraft,
+  autoReviewScandalAnalysisDraftQueue,
   approveScandalAnalysisDraft,
   listScandalAnalysisDrafts,
   rejectScandalAnalysisDraft,
@@ -47,23 +49,50 @@ export async function PATCH(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   if (!(await isAdminAuthed(req))) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  const body = await req.json().catch(() => null) as { id?: number; action?: string; sourceUrl?: string } | null;
-  if (!body?.id || !body.action) return NextResponse.json({ error: "missing_action" }, { status: 400 });
+  const body = await req.json().catch(() => null) as {
+    id?: number;
+    action?: string;
+    sourceUrl?: string;
+    limit?: number;
+  } | null;
+  if (!body?.action) return NextResponse.json({ error: "missing_action" }, { status: 400 });
 
   try {
     if (body.action === "approve") {
+      if (!body.id) return NextResponse.json({ error: "missing_id" }, { status: 400 });
       await approveScandalAnalysisDraft(getDb(), body.id);
       return NextResponse.json({ ok: true });
     }
     if (body.action === "reject") {
+      if (!body.id) return NextResponse.json({ error: "missing_id" }, { status: 400 });
       await rejectScandalAnalysisDraft(getDb(), body.id);
       return NextResponse.json({ ok: true });
     }
     if (body.action === "regenerate") {
+      if (!body.id) return NextResponse.json({ error: "missing_id" }, { status: 400 });
       if (!body.sourceUrl) return NextResponse.json({ error: "missing_source_url" }, { status: 400 });
       const pageText = await fetchTrustedScandalPageText(body.sourceUrl);
       await regenerateScandalAnalysisDraft(getDb(), body.id, pageText);
       return NextResponse.json({ ok: true });
+    }
+    if (body.action === "auto_review") {
+      if (!body.id) return NextResponse.json({ error: "missing_id" }, { status: 400 });
+      if (!process.env.GEMINI_API_KEY) {
+        return NextResponse.json({ error: "missing_gemini_api_key" }, { status: 503 });
+      }
+      const result = await autoReviewScandalAnalysisDraft(getDb(), body.id, process.env.GEMINI_API_KEY);
+      return NextResponse.json({ ok: true, result });
+    }
+    if (body.action === "auto_review_queue") {
+      if (!process.env.GEMINI_API_KEY) {
+        return NextResponse.json({ error: "missing_gemini_api_key" }, { status: 503 });
+      }
+      const results = await autoReviewScandalAnalysisDraftQueue(
+        getDb(),
+        process.env.GEMINI_API_KEY,
+        typeof body.limit === "number" ? body.limit : 10
+      );
+      return NextResponse.json({ ok: true, results });
     }
     return NextResponse.json({ error: "unknown_action" }, { status: 400 });
   } catch (error) {

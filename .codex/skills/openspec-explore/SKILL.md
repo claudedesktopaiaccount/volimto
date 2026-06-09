@@ -201,7 +201,7 @@ You: [reads codebase]
 
 **User is stuck mid-implementation:**
 ```
-User: /opsx:explore add-auth-system
+User: explore add-auth-system
       The OAuth integration is more complex than expected
 
 You: [reads change artifacts]
@@ -236,9 +236,9 @@ You: That changes everything.
      • Single user
 
                   SQLite          Postgres
-     Deployment   embedded ✓      needs server ✗
-     Offline      yes ✓           no ✗
-     Single file  yes ✓           no ✗
+     Deployment   embedded yes    needs server no
+     Offline      yes             no
+     Single file  yes             no
 
      SQLite. Not even close.
 
