@@ -19,7 +19,7 @@ import type {
   ScrapedVoteRecord,
   ScrapedSpeech,
   ScrapedMpActivities,
-} from "@/lib/scraper/nrsr";
+} from "@/lib/nrsr-types";
 
 const CHUNK = 50;
 

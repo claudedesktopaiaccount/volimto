@@ -276,23 +276,6 @@ export async function regenerateScandalAnalysisDraft(db: Database, draftId: numb
     .where(eq(scandalAnalysisDrafts.id, draftId));
 }
 
-async function createDraftForScandal(db: Database, scandalId: number, pageText: string) {
-  const input = await buildDraftInputForScandal(db, scandalId, pageText);
-  await db.insert(scandalAnalysisDrafts).values({
-    scandalId,
-    caseSummarySk: input.caseSummarySk,
-    publicInterestSk: input.publicInterestSk,
-    legalStatusSk: input.legalStatusSk,
-    openQuestionsSk: input.openQuestionsSk,
-    actorClaimsJson: serializeActorClaims(input.actorClaims),
-    sourceUrlsJson: JSON.stringify(input.sourceUrls),
-    reviewStatus: "needs_review",
-    model: input.model,
-    createdAt: new Date().toISOString(),
-    reviewedAt: null,
-  });
-}
-
 async function buildDraftInputForScandal(
   db: Database,
   scandalId: number,

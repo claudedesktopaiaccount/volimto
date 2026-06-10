@@ -6,7 +6,7 @@ import MethodologyAccordion from "@/components/predikcia/MethodologyAccordion";
 import PoslanciSection from "@/components/predikcia/PoslanciSection";
 import type { SimulationResult } from "@/lib/prediction/monte-carlo";
 import type { SeatAllocation } from "@/lib/prediction/dhondt";
-import type { CandidateWithParty } from "@/lib/db/candidates";
+import type { CandidateWithParty } from "@/lib/candidate-types";
 
 interface PredikciaClientProps {
   simulation: SimulationResult[];

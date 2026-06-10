@@ -1,12 +1,7 @@
 import type { ScrapedProgram } from "./programs";
+import type { ExtractedPromise } from "@/lib/promise-types";
 
-export interface ExtractedPromise {
-  partyId: string;
-  sourceUrl: string;
-  sourceDate: string;
-  textSk: string;
-  aiConfidence: number;
-}
+export type { ExtractedPromise } from "@/lib/promise-types";
 
 const PROMISE_KEYWORDS = [
   "zavedieme",

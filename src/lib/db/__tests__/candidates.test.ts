@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { getCandidates, type CandidateWithParty } from "../candidates";
+import type { CandidateWithParty } from "../../candidate-types";
+import { getCandidates } from "../candidates";
 
 // Mock Drizzle DB
 const mockRows: CandidateWithParty[] = [

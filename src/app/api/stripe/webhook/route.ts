@@ -25,7 +25,7 @@ function hexToBytes(hex: string): Uint8Array<ArrayBuffer> | null {
   return bytes;
 }
 
-export async function verifyStripeSignature(
+async function verifyStripeSignature(
   body: string,
   signature: string,
   secret: string

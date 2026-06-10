@@ -537,19 +537,3 @@ export const KAUZY: Kauza[] = [
     ],
   },
 ];
-
-function getActiveCourtKauzy() {
-  return [...KAUZY]
-    .filter((kauza) => kauza.status === "active_court" || kauza.status === "appeal")
-    .sort((a, b) => a.courtPriority - b.courtPriority);
-}
-
-function getKauzaStats() {
-  return {
-    total: KAUZY.length,
-    activeCourt: KAUZY.filter((kauza) => kauza.status === "active_court").length,
-    appeal: KAUZY.filter((kauza) => kauza.status === "appeal").length,
-    actors: new Set(KAUZY.flatMap((kauza) => kauza.actors.map((actor) => actor.name))).size,
-    sources: KAUZY.reduce((sum, kauza) => sum + kauza.sources.length, 0),
-  };
-}

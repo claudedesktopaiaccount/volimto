@@ -1,6 +1,6 @@
-import { getDb } from "./index";
-import { polls, newsItems, predictions } from "./schema";
 import { desc } from "drizzle-orm";
+import { getDb } from "@/lib/db";
+import { newsItems, polls, predictions } from "@/lib/db/schema";
 
 export async function getLastUpdate(): Promise<string | null> {
   try {

@@ -1,18 +1,7 @@
 import { eq, sql } from "drizzle-orm";
 import type { Database } from "@/lib/db";
+import type { CandidateWithParty } from "@/lib/candidate-types";
 import { candidates, parties } from "./schema";
-
-export interface CandidateWithParty {
-  id: number;
-  partyId: string;
-  name: string;
-  listRank: number;
-  role: string | null;
-  portraitUrl: string | null;
-  partyColor: string;
-  partyAbbreviation: string;
-  partyName: string;
-}
 
 export async function getCandidates(db: Database): Promise<CandidateWithParty[]> {
   return await db

@@ -2,14 +2,14 @@ import { timingSafeEqual } from "@/lib/hash";
 
 export const GOOGLE_OAUTH_STATE_COOKIE = "volimto_google_oauth_state";
 export const GOOGLE_OAUTH_NEXT_COOKIE = "volimto_google_oauth_next";
-export const GOOGLE_OAUTH_COOKIE_MAX_AGE = 10 * 60;
+const GOOGLE_OAUTH_COOKIE_MAX_AGE = 10 * 60;
 
 export function safeAuthNextPath(next: string | null | undefined): string {
   if (!next || !next.startsWith("/") || next.startsWith("//")) return "/profil";
   return next;
 }
 
-export function getGoogleAllowedEmails(): string[] {
+function getGoogleAllowedEmails(): string[] {
   return (process.env.GOOGLE_ALLOWED_EMAILS ?? "")
     .split(",")
     .map((email) => email.trim().toLowerCase())

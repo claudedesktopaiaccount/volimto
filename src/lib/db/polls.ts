@@ -1,6 +1,5 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
-import type { RawPollRow } from "@/lib/scraper/wikipedia";
-import { WIKIPEDIA_POLLS_URL } from "@/lib/scraper/wikipedia";
+import { WIKIPEDIA_POLLS_URL, type RawPollRow } from "@/lib/poll-types";
 import type { Database } from "./index";
 import { pollResults, polls } from "./schema";
 

@@ -1,7 +1,7 @@
 import * as cheerio from "cheerio";
+import { WIKIPEDIA_POLLS_URL, type RawPollRow } from "@/lib/poll-types";
 
-export const WIKIPEDIA_POLLS_URL =
-  "https://en.wikipedia.org/wiki/Opinion_polling_for_the_next_Slovak_parliamentary_election";
+export type { RawPollRow } from "@/lib/poll-types";
 
 /**
  * Mapping from Wikipedia header text (lowercased) → our internal party IDs.
@@ -30,13 +30,6 @@ const HEADER_TO_PARTY: Record<string, string> = {
   "oľano and friends": "slovensko",
   "oľano": "slovensko",
 };
-
-export interface RawPollRow {
-  agency: string;
-  publishedDate: string;
-  sampleSize: number | null;
-  results: Record<string, number>;
-}
 
 const MONTHS: Record<string, string> = {
   jan: "01", feb: "02", mar: "03", apr: "04",

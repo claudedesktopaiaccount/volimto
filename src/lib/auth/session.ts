@@ -1,6 +1,6 @@
 import { type Database } from "@/lib/db";
 import { userSessions } from "@/lib/db/schema";
-import { eq, lt } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 export const SESSION_COOKIE = "volimto_session";
 const SESSION_DURATION_DAYS = 30;
@@ -60,11 +60,6 @@ export async function validateSession(
 export async function deleteSession(token: string, db: Database): Promise<void> {
   const tokenHash = await hashToken(token);
   await db.delete(userSessions).where(eq(userSessions.id, tokenHash));
-}
-
-async function deleteExpiredSessions(db: Database): Promise<void> {
-  const now = new Date().toISOString();
-  await db.delete(userSessions).where(lt(userSessions.expiresAt, now));
 }
 
 export function sessionCookieOptions(expiresAt: string) {

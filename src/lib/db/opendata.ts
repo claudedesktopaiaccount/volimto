@@ -5,7 +5,7 @@ import type {
   ScrapedCompany,
   ScrapedContract,
   ScrapedDonation,
-} from "@/lib/scraper/opendata";
+} from "@/lib/opendata-types";
 import type { VerifiedPoliticianCompanyLink } from "@/lib/verified-financial-links";
 
 const CHUNK = 50;

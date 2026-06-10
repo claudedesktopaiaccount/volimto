@@ -1,4 +1,3 @@
-import type { ButtonHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
 type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
@@ -34,24 +33,5 @@ export function buttonClasses({
     sizeClasses[size],
     fullWidth && "w-full",
     className
-  );
-}
-
-function Button({
-  variant = "secondary",
-  size = "md",
-  fullWidth = false,
-  className,
-  ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: ButtonVariant;
-  size?: ButtonSize;
-  fullWidth?: boolean;
-}) {
-  return (
-    <button
-      className={buttonClasses({ variant, size, fullWidth, className })}
-      {...props}
-    />
   );
 }

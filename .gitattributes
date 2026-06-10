@@ -1,0 +1,11 @@
+# Keep text files normalized in Git and avoid treating binary assets as text.
+* text=auto
+
+*.avif binary
+*.gif binary
+*.ico binary
+*.jpg binary
+*.jpeg binary
+*.pdf binary
+*.png binary
+*.webp binary

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { PARTIES } from "@/lib/parties";
-import type { CandidateWithParty } from "@/lib/db/candidates";
+import type { CandidateWithParty } from "@/lib/candidate-types";
 import type { SeatAllocation } from "@/lib/prediction/dhondt";
 
 interface PoslanciSectionProps {

@@ -5,8 +5,4 @@
  */
 export const COALITION_PARTY_IDS = new Set<string>(["smer-sd", "hlas-sd", "sns", "vidieka"]);
 
-function isCoalitionParty(partyId: string | null | undefined): boolean {
-  return !!partyId && COALITION_PARTY_IDS.has(partyId);
-}
-
 export const TOTAL_SEATS = 150;

@@ -1,6 +1,6 @@
 import { getDb } from "@/lib/db";
 import { promises as promisesTable } from "@/lib/db/schema";
-import type { ExtractedPromise } from "@/lib/scraper/promise-extractor";
+import type { ExtractedPromise } from "@/lib/promise-types";
 
 const BATCH_SIZE = 50;
 

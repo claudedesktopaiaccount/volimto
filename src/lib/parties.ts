@@ -158,14 +158,3 @@ export const PARTIES: Record<string, Party> = {
 export const PARTY_IDS = Object.keys(PARTIES);
 
 export const PARTY_LIST = Object.values(PARTIES);
-
-/** Preset coalition groupings */
-const COALITIONS = {
-  progressive: ["ps", "demokrati", "kdh", "sas"],
-  fico: ["smer-sd", "hlas-sd", "sns", "republika"],
-} as const;
-
-/** Get a party by ID, with fallback */
-function getParty(id: string): Party | undefined {
-  return PARTIES[id];
-}

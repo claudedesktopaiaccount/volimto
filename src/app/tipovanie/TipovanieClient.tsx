@@ -11,8 +11,6 @@ import VotingPanel from "@/components/tipovanie/VotingPanel";
 import CommunityResults, { type CrowdData } from "@/components/tipovanie/CommunityResults";
 import { useToggleSet } from "@/hooks/useToggleSet";
 
-export type { CrowdData };
-
 interface LeaderboardEntry {
   rank: number;
   displayName: string;

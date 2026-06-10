@@ -1,6 +1,6 @@
 import Link from "next/link";
 import NewsletterSignup from "@/components/NewsletterSignup";
-import { getLastUpdate } from "@/lib/db/footer";
+import { getLastUpdate } from "@/lib/footer";
 
 const COLUMNS: { heading: string; links: { href: string; label: string }[] }[] = [
   {
