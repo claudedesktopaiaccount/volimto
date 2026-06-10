@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { unstable_cache } from "next/cache";
 import PageHeader from "@/components/ui/PageHeader";
 import KauzyClient from "./KauzyClient";
 import { getDb } from "@/lib/db";
@@ -9,6 +10,12 @@ import { classifyScandalSource } from "@/lib/scandals/trusted-sources";
 import { isStaticBuild, withTimeout } from "@/lib/runtime-data";
 
 export const revalidate = 3600;
+
+const getCachedKauzy = unstable_cache(
+  async () => getScandalKauzy(getDb()),
+  ["kauzy-db-data"],
+  { revalidate: 3600, tags: ["kauzy"] }
+);
 
 export const metadata: Metadata = {
   title: "Kauzy a prepojenia — VolímTo",
@@ -44,7 +51,7 @@ async function loadKauzy(): Promise<Kauza[]> {
   if (!process.env.DATABASE_URL || isStaticBuild()) return normalizeFallbackKauzy();
 
   try {
-    const dbKauzy = await withTimeout("kauzy database load", () => getScandalKauzy(getDb()));
+    const dbKauzy = await withTimeout("kauzy database load", () => getCachedKauzy());
     return dbKauzy.length > 0 ? dbKauzy : normalizeFallbackKauzy();
   } catch (error) {
     console.error("[kauzy] failed to load scandals from database", error);

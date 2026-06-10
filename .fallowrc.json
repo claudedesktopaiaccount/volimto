@@ -1,0 +1,45 @@
+{
+  "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
+  "entry": [
+    "src/index.{ts,tsx,js,jsx}",
+    "src/main.{ts,tsx,js,jsx}"
+  ],
+  "dynamicallyLoaded": [
+    "public/embed.js",
+    "public/sw.js",
+    "scripts/*.{ts,mjs}"
+  ],
+  "ignorePatterns": [
+    "src/lib/scraper/__fixtures__/**"
+  ],
+  "boundaries": {
+    "zones": [
+      { "name": "app", "patterns": ["src/app/**"] },
+      { "name": "ui", "patterns": ["src/components/**"] },
+      { "name": "db", "patterns": ["src/lib/db/**"] },
+      { "name": "scraper", "patterns": ["src/lib/scraper/**"] },
+      { "name": "api-support", "patterns": ["src/lib/api/**", "src/lib/auth/**", "src/lib/api-keys/**"] }
+    ],
+    "rules": [
+      { "from": "ui", "allow": ["ui", "api-support"] },
+      { "from": "scraper", "allow": ["scraper", "db", "api-support"] },
+      { "from": "db", "allow": ["db", "api-support"] }
+    ]
+  },
+  "duplicates": {
+    "minOccurrences": 3
+  },
+  "rules": {
+    "unused-dependencies": "warn"
+  },
+  "ignoreExports": [
+    {
+      "file": "src/lib/kauzy-data.ts",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/lib/scandals.ts",
+      "exports": ["*"]
+    }
+  ]
+}

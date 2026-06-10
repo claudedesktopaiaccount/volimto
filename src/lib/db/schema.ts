@@ -1,3 +1,4 @@
+import { relations } from "drizzle-orm";
 import { pgTable, text, integer, doublePrecision, uniqueIndex, index, serial, boolean } from "drizzle-orm/pg-core";
 
 // Rate Limits
@@ -882,3 +883,63 @@ export const contracts = pgTable(
     index("contracts_linked_politician_id_idx").on(table.linkedPoliticianId),
   ]
 );
+
+export const partiesRelations = relations(parties, ({ many }) => ({
+  pollResults: many(pollResults),
+  predictionResults: many(predictionResults),
+  candidates: many(candidates),
+  mps: many(mps),
+  promises: many(promises),
+  donations: many(donations),
+}));
+
+export const pollsRelations = relations(polls, ({ many }) => ({
+  results: many(pollResults),
+}));
+
+export const pollResultsRelations = relations(pollResults, ({ one }) => ({
+  poll: one(polls, { fields: [pollResults.pollId], references: [polls.id] }),
+  party: one(parties, { fields: [pollResults.partyId], references: [parties.id] }),
+}));
+
+export const mpsRelations = relations(mps, ({ one, many }) => ({
+  party: one(parties, { fields: [mps.partyId], references: [parties.id] }),
+  speeches: many(speeches),
+  voteRecords: many(voteRecords),
+  promises: many(promises),
+  scandals: many(scandalPoliticianLinks),
+  companies: many(politicianCompanyLinks),
+  contracts: many(contracts),
+  foreignTrips: many(mpForeignTrips),
+  assistants: many(mpAssistants),
+  offices: many(mpOffices),
+}));
+
+export const speechesRelations = relations(speeches, ({ one }) => ({
+  mp: one(mps, { fields: [speeches.mpId], references: [mps.id] }),
+}));
+
+export const votesRelations = relations(votes, ({ many }) => ({
+  records: many(voteRecords),
+}));
+
+export const voteRecordsRelations = relations(voteRecords, ({ one }) => ({
+  vote: one(votes, { fields: [voteRecords.voteId], references: [votes.id] }),
+  mp: one(mps, { fields: [voteRecords.mpId], references: [mps.id] }),
+}));
+
+export const scandalsRelations = relations(scandals, ({ many }) => ({
+  politicians: many(scandalPoliticianLinks),
+  sources: many(scandalSources),
+  events: many(scandalEvents),
+  claims: many(scandalClaims),
+  drafts: many(scandalAnalysisDrafts),
+}));
+
+export const companiesRelations = relations(companies, ({ many }) => ({
+  politicians: many(politicianCompanyLinks),
+}));
+
+export const contractsRelations = relations(contracts, ({ one }) => ({
+  linkedPolitician: one(mps, { fields: [contracts.linkedPoliticianId], references: [mps.id] }),
+}));

@@ -2,17 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { pollResults, polls } from "@/lib/db/schema";
 import { isAdminAuthed } from "@/lib/admin-auth";
+import { numberRecord, readJsonObject, requiredString } from "@/lib/api/validation";
+import { revalidateCacheTag } from "@/lib/cache/tags";
 
 export async function POST(req: NextRequest) {
   if (!(await isAdminAuthed(req))) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-  const body = await req.json().catch(() => null) as {
-    agency?: string;
-    publishedDate?: string;
-    results?: Record<string, number>;
-  } | null;
+  const body = await readJsonObject(req);
+  if (!body.ok) {
+    return NextResponse.json({ error: "invalid_body" }, { status: 400 });
+  }
 
-  if (!body?.agency || !body?.publishedDate || !body?.results) {
+  const agency = requiredString(body.value.agency);
+  const publishedDate = requiredString(body.value.publishedDate);
+  const results = numberRecord(body.value.results);
+
+  if (!agency || !publishedDate || !results) {
     return NextResponse.json({ error: "missing_fields" }, { status: 400 });
   }
 
@@ -21,11 +26,11 @@ export async function POST(req: NextRequest) {
 
   const [insertedPoll] = await db
     .insert(polls)
-    .values({ agency: body.agency, publishedDate: body.publishedDate, createdAt: now })
+    .values({ agency, publishedDate, createdAt: now })
     .returning({ id: polls.id });
 
   const pollId = insertedPoll.id;
-  const resultRows = Object.entries(body.results)
+  const resultRows = Object.entries(results)
     .filter(([, pct]) => typeof pct === "number" && pct > 0)
     .map(([partyId, pct]) => ({ pollId, partyId, percentage: pct }));
 
@@ -33,5 +38,6 @@ export async function POST(req: NextRequest) {
     await db.insert(pollResults).values(resultRows);
   }
 
+  revalidateCacheTag("polls");
   return NextResponse.json({ ok: true, pollId });
 }

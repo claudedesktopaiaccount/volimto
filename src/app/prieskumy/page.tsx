@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { unstable_cache } from "next/cache";
 import SectionHeading from "@/components/ui/SectionHeading";
 import { getAllPolls } from "@/lib/poll-data";
 import { PARTY_LIST } from "@/lib/parties";
@@ -17,6 +18,15 @@ export const metadata: Metadata = {
 
 export const revalidate = 21600;
 
+const getCachedDbPolls = unstable_cache(
+  async () => {
+    const db = getDb();
+    return getAllPolls(db);
+  },
+  ["prieskumy-db-polls"],
+  { revalidate: 21600, tags: ["polls"] }
+);
+
 function formatSlovakDate(isoDate?: string): string {
   if (!isoDate) return "N/A";
 
@@ -33,8 +43,7 @@ export default async function PrieskumyPage() {
   let polls: Awaited<ReturnType<typeof getAllPolls>> = [];
   try {
     if (!isStaticBuild() && process.env.DATABASE_URL) {
-      const db = getDb();
-      polls = await withTimeout("polls database load", () => getAllPolls(db));
+      polls = await withTimeout("polls database load", () => getCachedDbPolls());
     }
   } catch {
     // fall back to live scraping below

@@ -4,6 +4,7 @@ import { polls, pollResults, parties } from "@/lib/db/schema";
 import { desc, inArray } from "drizzle-orm";
 import { lookupApiKey } from "@/lib/api-keys/keys";
 import { checkAndIncrement } from "@/lib/api-keys/rate-limit";
+import { boundedInteger } from "@/lib/api/validation";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -70,8 +71,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Parse limit (default 10, max 50)
-    const rawLimit = parseInt(searchParams.get("limit") ?? "10", 10);
-    const limit = isNaN(rawLimit) ? 10 : Math.min(Math.max(1, rawLimit), 50);
+    const limit = boundedInteger(searchParams.get("limit"), 10, 1, 50);
 
     // Optional partyId filter
     const partyIdFilter = searchParams.get("partyId");

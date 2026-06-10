@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { isCronAuthed } from "@/lib/cron-auth";
 import { scrapeAndStoreScandals } from "@/lib/scraper/scandals";
+import { boundedInteger } from "@/lib/api/validation";
+import { revalidateCacheTag } from "@/lib/cache/tags";
 
 export const runtime = "nodejs";
 
@@ -15,6 +17,7 @@ export async function GET(req: NextRequest) {
     const result = await scrapeAndStoreScandals(getDb(), limit, {
       geminiApiKey: process.env.GEMINI_API_KEY,
     });
+    revalidateCacheTag("kauzy");
     return NextResponse.json({ ok: true, ...result });
   } catch (error) {
     console.error("[cron] scrape-scandals error:", error);
@@ -26,6 +29,5 @@ export async function GET(req: NextRequest) {
 }
 
 function parseLimit(raw: string | null) {
-  const value = Number(raw ?? 80);
-  return Number.isFinite(value) ? Math.min(100, Math.max(1, Math.trunc(value))) : 80;
+  return boundedInteger(raw, 80, 1, 100);
 }

@@ -15,6 +15,7 @@ const PRIMARY_LINKS: NavLink[] = [
   { href: "/predikcia", label: "Predikcia" },
   { href: "/kauzy", label: "Kauzy" },
   { href: "/poslanci", label: "Poslanci" },
+  { href: "/opendata", label: "Opendata" },
   { href: "/koalicny-simulator", label: "Koaličný simulátor" },
   { href: "/tipovanie", label: "Tipovanie" },
   { href: "/povolebne-plany", label: "Povolebné plány" },

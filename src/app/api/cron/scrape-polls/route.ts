@@ -3,6 +3,7 @@ import { getDb } from "@/lib/db";
 import { importPollRows } from "@/lib/db/polls";
 import { isCronAuthed } from "@/lib/cron-auth";
 import { scrapeWikipediaPolls } from "@/lib/scraper/wikipedia";
+import { revalidateCacheTag } from "@/lib/cache/tags";
 
 export async function GET(req: NextRequest) {
   if (!(await isCronAuthed(req))) {
@@ -13,6 +14,7 @@ export async function GET(req: NextRequest) {
     const scrapedPolls = await scrapeWikipediaPolls();
     const summary = await importPollRows(getDb(), scrapedPolls);
 
+    revalidateCacheTag("polls");
     return NextResponse.json({ ok: true, ...summary });
   } catch (error) {
     console.error("[cron] scrape-polls error:", error);

@@ -14,6 +14,7 @@ import {
 } from "@/lib/db/opendata";
 import { isCronAuthed } from "@/lib/cron-auth";
 import { VERIFIED_POLITICIAN_COMPANY_LINKS } from "@/lib/verified-financial-links";
+import { revalidateCacheTag } from "@/lib/cache/tags";
 
 export async function GET(req: NextRequest) {
   if (!(await isCronAuthed(req))) {
@@ -42,6 +43,9 @@ export async function GET(req: NextRequest) {
     // Known donations (static seed from public reports)
     const donationItems = getKnownDonations();
     const donationCount = await upsertDonations(db, donationItems);
+
+    revalidateCacheTag("opendata");
+    revalidateCacheTag("poslanci");
 
     return NextResponse.json({
       ok: true,
