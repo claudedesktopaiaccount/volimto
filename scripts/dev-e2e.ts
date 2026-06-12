@@ -16,8 +16,16 @@ if (process.env.DATABASE_URL && process.env.DATABASE_URL === e2eDatabaseUrl) {
   process.exit(1);
 }
 
-const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
-const child = spawn(npmCommand, ["run", "dev"], {
+const child = process.platform === "win32"
+  ? spawn("cmd.exe", ["/d", "/s", "/c", "npm.cmd run dev"], {
+      stdio: "inherit",
+      env: {
+        ...process.env,
+        DATABASE_URL: e2eDatabaseUrl,
+        VOLIMTO_E2E: "1",
+      },
+    })
+  : spawn("npm", ["run", "dev"], {
   stdio: "inherit",
   env: {
     ...process.env,

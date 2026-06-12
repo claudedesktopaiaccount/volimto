@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  isPubliclyRelevantContract,
   isContractDateWithinVerifiedLink,
   verifiedLinkMatchesContract,
 } from "./opendata";
@@ -32,5 +33,11 @@ describe("verified financial linking", () => {
         link
       )
     ).toBe(false);
+  });
+
+  it("marks only contracts linked to a politician as public opendata rows", () => {
+    expect(isPubliclyRelevantContract({ linkedPoliticianId: 42 })).toBe(true);
+    expect(isPubliclyRelevantContract({ linkedPoliticianId: null })).toBe(false);
+    expect(isPubliclyRelevantContract({ linkedPoliticianId: undefined })).toBe(false);
   });
 });

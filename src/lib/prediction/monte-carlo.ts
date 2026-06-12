@@ -19,12 +19,17 @@ interface SimulationResult {
   parliamentProbability: number; // Probability of >5%
 }
 
+interface SimulationOptions {
+  simulations?: number;
+  rng?: () => number;
+}
+
 /**
  * Box-Muller transform for generating normally distributed random values.
  */
-function gaussianRandom(mean: number, stdDev: number): number {
-  const u1 = Math.random();
-  const u2 = Math.random();
+function gaussianRandom(mean: number, stdDev: number, rng: () => number): number {
+  const u1 = Math.max(rng(), Number.EPSILON);
+  const u2 = rng();
   const z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
   return mean + z * stdDev;
 }
@@ -35,6 +40,15 @@ function gaussianRandom(mean: number, stdDev: number): number {
  * drawn from N(0, stdDev), then runs D'Hondt allocation.
  */
 export function runSimulation(parties: PartyInput[]): SimulationResult[] {
+  return runSimulationWithOptions(parties);
+}
+
+export function runSimulationWithOptions(
+  parties: PartyInput[],
+  options: SimulationOptions = {}
+): SimulationResult[] {
+  const simulations = Math.max(1, Math.floor(options.simulations ?? SIMULATIONS));
+  const rng = options.rng ?? Math.random;
   const allPcts: Record<string, number[]> = {};
   const allSeats: Record<string, number[]> = {};
   const winCounts: Record<string, number> = {};
@@ -47,10 +61,10 @@ export function runSimulation(parties: PartyInput[]): SimulationResult[] {
     parliamentCounts[party.partyId] = 0;
   }
 
-  for (let i = 0; i < SIMULATIONS; i++) {
+  for (let i = 0; i < simulations; i++) {
     // Generate perturbed percentages
     const simVotes = parties.map((p) => {
-      const pct = Math.max(0, gaussianRandom(p.meanPct, p.stdDev));
+      const pct = Math.max(0, gaussianRandom(p.meanPct, p.stdDev, rng));
       return { partyId: p.partyId, percentage: pct };
     });
 
@@ -85,8 +99,8 @@ export function runSimulation(parties: PartyInput[]): SimulationResult[] {
     const lowerBound = pcts[Math.floor(pcts.length * 0.05)];
     const upperBound = pcts[Math.floor(pcts.length * 0.95)];
     const meanSeats = seats.reduce((s, v) => s + v, 0) / seats.length;
-    const winProbability = winCounts[party.partyId] / SIMULATIONS;
-    const parliamentProbability = parliamentCounts[party.partyId] / SIMULATIONS;
+    const winProbability = winCounts[party.partyId] / simulations;
+    const parliamentProbability = parliamentCounts[party.partyId] / simulations;
 
     return {
       partyId: party.partyId,
@@ -120,4 +134,4 @@ export function estimateStdDev(
   return Math.min(4.0, Math.max(1.5, empiricalStd));
 }
 
-export { type PartyInput, type SimulationResult };
+export { type PartyInput, type SimulationOptions, type SimulationResult };

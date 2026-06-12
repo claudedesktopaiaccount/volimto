@@ -23,8 +23,8 @@ const COLUMNS: { heading: string; links: { href: string; label: string }[] }[] =
     heading: "INFO",
     links: [
       { href: "/povolebne-plany", label: "Povolebné plány" },
-      { href: "#", label: "Metodika" },
-      { href: "#", label: "Zdroje dát" },
+      { href: "/metodika", label: "Metodika" },
+      { href: "/metodika#zdroje-dat", label: "Zdroje dát" },
     ],
   },
   {

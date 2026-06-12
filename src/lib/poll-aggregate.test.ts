@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { getAggregatedPolls } from "./poll-aggregate";
+import { calculatePollAgeWeight, getAggregatedPolls } from "./poll-aggregate";
 
 // Mock the scraper
 vi.mock("./scraper/wikipedia", () => ({
@@ -90,5 +90,19 @@ describe("getAggregatedPolls", () => {
       expect(typeof p.meanPct).toBe("number");
       expect(typeof p.stdDev).toBe("number");
     }
+  });
+});
+
+describe("calculatePollAgeWeight", () => {
+  it("returns full weight for a current poll", () => {
+    expect(calculatePollAgeWeight(0)).toBe(1);
+  });
+
+  it("applies roughly a 30-day half-life", () => {
+    expect(calculatePollAgeWeight(30)).toBeCloseTo(0.5, 1);
+  });
+
+  it("heavily discounts polls after 90 days", () => {
+    expect(calculatePollAgeWeight(90)).toBeCloseTo(0.126, 2);
   });
 });

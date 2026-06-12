@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { unstable_cache } from "next/cache";
-import { desc, sql } from "drizzle-orm";
+import { desc, eq, isNotNull, sql } from "drizzle-orm";
 import PageHeader from "@/components/ui/PageHeader";
 import { getDb } from "@/lib/db";
-import { companies, contracts, donations, parties, politicianCompanyLinks } from "@/lib/db/schema";
+import { companies, contracts, donations, mps, parties, politicianCompanyLinks } from "@/lib/db/schema";
 import { isStaticBuild, withTimeout } from "@/lib/runtime-data";
 
 export const revalidate = 21600;
@@ -33,8 +33,11 @@ const getCachedOpendata = unstable_cache(
           amountEur: contracts.amountEur,
           signedDate: contracts.signedDate,
           sourceUrl: contracts.sourceUrl,
+          politicianName: mps.nameDisplay,
         })
         .from(contracts)
+        .innerJoin(mps, eq(contracts.linkedPoliticianId, mps.id))
+        .where(isNotNull(contracts.linkedPoliticianId))
         .orderBy(desc(contracts.signedDate))
         .limit(8),
       db
@@ -67,7 +70,8 @@ const getCachedOpendata = unstable_cache(
           contractCount: sql<number>`count(distinct ${contracts.id})`.mapWith(Number),
           contractAmount: sql<number>`coalesce(sum(${contracts.amountEur}), 0)`.mapWith(Number),
         })
-        .from(contracts),
+        .from(contracts)
+        .where(isNotNull(contracts.linkedPoliticianId)),
     ]);
 
     return {
@@ -89,24 +93,25 @@ export default async function OpendataPage() {
       <PageHeader
         eyebrow="Otvorené dáta"
         title="Zmluvy, dary a firemné prepojenia"
-        description="Prvý verejný pohľad na dátové vrstvy, ktoré doteraz žili hlavne v profile poslanca a v admin/scraper infraštruktúre."
+        description="Verejný pohľad na dátové vrstvy, ktoré majú overenú väzbu na politiku: dary stranám, firemné prepojenia politikov a zmluvy naviazané na tieto prepojenia."
       />
 
       <section className="mb-8 grid gap-px bg-border sm:grid-cols-2">
-        <Stat label="Zmlúv v databáze" value={data.totals.contractCount.toLocaleString("sk-SK")} />
-        <Stat label="Hodnota zmlúv" value={eur.format(data.totals.contractAmount)} />
+        <Stat label="Politicky naviazaných zmlúv" value={data.totals.contractCount.toLocaleString("sk-SK")} />
+        <Stat label="Hodnota naviazaných zmlúv" value={eur.format(data.totals.contractAmount)} />
       </section>
 
       <div className="grid gap-8 lg:grid-cols-3">
-        <DataBlock title="Najnovšie zmluvy">
+        <DataBlock title="Zmluvy s overeným politickým prepojením">
           {data.contracts.length === 0 ? (
-            <Empty />
+            <Empty text="Zatiaľ nemáme žiadne zmluvy s overeným prepojením na politika." />
           ) : (
             data.contracts.map((contract) => (
               <a key={contract.id} href={contract.sourceUrl} target="_blank" rel="noopener" className="block border-b border-divider py-3 hover:bg-hover">
                 <p className="text-xs font-mono text-muted">{contract.signedDate}</p>
                 <p className="mt-1 line-clamp-2 text-sm font-semibold text-ink">{contract.titleSk}</p>
                 <p className="mt-1 text-xs text-muted">{contract.supplierName}</p>
+                <p className="mt-1 text-xs font-semibold text-secondary">Prepojenie: {contract.politicianName}</p>
                 <p className="mt-1 text-sm font-mono text-ink">{eur.format(contract.amountEur)}</p>
               </a>
             ))
@@ -187,10 +192,10 @@ function DataBlock({ title, children }: { title: string; children: React.ReactNo
   );
 }
 
-function Empty() {
+function Empty({ text = "Dáta zatiaľ nie sú dostupné." }: { text?: string }) {
   return (
     <div className="border border-border bg-card p-6 text-sm text-muted">
-      Dáta zatiaľ nie sú dostupné.
+      {text}
     </div>
   );
 }

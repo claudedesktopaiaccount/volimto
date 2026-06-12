@@ -48,6 +48,9 @@ npm test             # Vitest unit testy
 npm run test:e2e     # Playwright E2E testy
 ```
 
+E2E testy vyzadujú samostatnú testovaciu Postgres databázu cez `E2E_DATABASE_URL`.
+Nepoužívaj rovnakú hodnotu ako `DATABASE_URL`, pretože E2E seed upravuje testovacie dáta.
+
 ## Potrebne Vercel premenne
 
 Nastav pred deploymentom:

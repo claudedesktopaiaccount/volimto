@@ -61,6 +61,12 @@ export function verifiedLinkMatchesContract(
   );
 }
 
+export function isPubliclyRelevantContract(
+  contract: { linkedPoliticianId: number | null | undefined }
+): boolean {
+  return contract.linkedPoliticianId != null;
+}
+
 // ─── Companies ────────────────────────────────────────────
 
 /**

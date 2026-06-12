@@ -1,5 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { runSimulation, estimateStdDev } from "./monte-carlo";
+import { runSimulation, runSimulationWithOptions, estimateStdDev } from "./monte-carlo";
+
+function seededRandom(seed: number) {
+  let state = seed;
+  return () => {
+    state = (state * 1664525 + 1013904223) % 4294967296;
+    return state / 4294967296;
+  };
+}
 
 describe("estimateStdDev", () => {
   it("returns 2.5 for single poll", () => {
@@ -75,5 +83,42 @@ describe("runSimulation", () => {
     const results = runSimulation(parties);
     const totalWinProb = results.reduce((s, r) => s + r.winProbability, 0);
     expect(totalWinProb).toBeCloseTo(1.0, 1);
+  });
+
+  it("keeps runSimulation as the compatible default wrapper", () => {
+    const parties = [
+      { partyId: "a", meanPct: 22, stdDev: 2 },
+      { partyId: "b", meanPct: 20, stdDev: 2 },
+    ];
+    const results = runSimulation(parties);
+    expect(results).toHaveLength(2);
+    expect(results[0]).toMatchObject({
+      partyId: "a",
+      meanPct: expect.any(Number),
+      meanSeats: expect.any(Number),
+      winProbability: expect.any(Number),
+      parliamentProbability: expect.any(Number),
+    });
+  });
+});
+
+describe("runSimulationWithOptions", () => {
+  it("supports deterministic runs with an injected rng", () => {
+    const parties = [
+      { partyId: "a", meanPct: 25, stdDev: 2 },
+      { partyId: "b", meanPct: 20, stdDev: 2 },
+      { partyId: "c", meanPct: 8, stdDev: 1.5 },
+    ];
+
+    const first = runSimulationWithOptions(parties, {
+      simulations: 250,
+      rng: seededRandom(42),
+    });
+    const second = runSimulationWithOptions(parties, {
+      simulations: 250,
+      rng: seededRandom(42),
+    });
+
+    expect(first).toEqual(second);
   });
 });

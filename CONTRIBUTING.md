@@ -9,7 +9,7 @@ git clone https://github.com/<your-handle>/volimto.git
 cd volimto
 npm install
 cp .env.example .env
-# Fill in CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_DATABASE_ID, CLOUDFLARE_D1_TOKEN
+# Fill in DATABASE_URL and a separate E2E_DATABASE_URL for Playwright tests
 npm run db:migrate
 npm run dev
 ```

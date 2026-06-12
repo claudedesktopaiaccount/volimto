@@ -3,7 +3,7 @@ import { estimateStdDev } from "./prediction/monte-carlo";
 import type { Database } from "./db";
 import { getPollRows } from "./db/polls";
 
-const LAMBDA = 0.023; // 30-day half-life: e^(-0.023*30) ≈ 0.5
+export const POLL_WEIGHT_LAMBDA = 0.023; // 30-day half-life: e^(-0.023*30) ≈ 0.5
 const WINDOW_DAYS = 365;
 
 export interface AggregatedParty {
@@ -63,7 +63,7 @@ export async function getAggregatedPolls(db?: Database): Promise<AggregatedParty
     const entries = workingPolls
       .filter((p) => p.results[partyId] != null && p.results[partyId] > 0)
       .map((p) => ({
-        weight: Math.exp(-LAMBDA * daysBetween(p.publishedDate, todayStr)),
+        weight: calculatePollAgeWeight(daysBetween(p.publishedDate, todayStr)),
         pct: p.results[partyId],
         agency: p.agency,
         publishedDate: p.publishedDate,
@@ -99,4 +99,8 @@ function daysBetween(dateStr: string, referenceStr: string): number {
   const d = new Date(dateStr).getTime();
   const r = new Date(referenceStr).getTime();
   return Math.max(0, Math.round((r - d) / (1000 * 60 * 60 * 24)));
+}
+
+export function calculatePollAgeWeight(ageDays: number): number {
+  return Math.exp(-POLL_WEIGHT_LAMBDA * Math.max(0, ageDays));
 }
