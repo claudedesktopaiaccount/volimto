@@ -14,4 +14,8 @@ describe("opendata page contract queries", () => {
     expect(source).toContain("innerJoin(mps");
     expect(source).toContain("politicianName: mps.nameDisplay");
   });
+
+  it("shows an explicit RPPOZ source link for party donations", () => {
+    expect(source).toContain("<SourceLink href={donation.sourceUrl}>Zdroj RPPOZ</SourceLink>");
+  });
 });

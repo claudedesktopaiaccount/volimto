@@ -123,12 +123,13 @@ export default async function OpendataPage() {
             <Empty />
           ) : (
             data.donations.map((donation) => (
-              <a key={donation.id} href={donation.sourceUrl} target="_blank" rel="noopener" className="block border-b border-divider py-3 hover:bg-hover">
+              <article key={donation.id} className="border-b border-divider py-3">
                 <p className="text-xs font-mono text-muted">{donation.donationDate}</p>
                 <p className="mt-1 text-sm font-semibold text-ink">{donation.donorName}</p>
                 <p className="mt-1 text-xs text-muted">{donation.partyName ?? "Neznáma strana"}</p>
                 <p className="mt-1 text-sm font-mono text-ink">{eur.format(donation.amountEur)}</p>
-              </a>
+                <SourceLink href={donation.sourceUrl}>Zdroj RPPOZ</SourceLink>
+              </article>
             ))
           )}
         </DataBlock>
@@ -197,5 +198,18 @@ function Empty({ text = "Dáta zatiaľ nie sú dostupné." }: { text?: string })
     <div className="border border-border bg-card p-6 text-sm text-muted">
       {text}
     </div>
+  );
+}
+
+function SourceLink({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="mt-2 inline-block text-xs font-mono font-semibold text-accent hover:underline"
+    >
+      {children}
+    </a>
   );
 }
