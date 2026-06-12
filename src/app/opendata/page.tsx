@@ -43,6 +43,7 @@ const getCachedOpendata = unstable_cache(
       db
         .select({
           id: donations.id,
+          partyId: donations.partyId,
           partyName: parties.name,
           donorName: donations.donorName,
           amountEur: donations.amountEur,
@@ -128,7 +129,7 @@ export default async function OpendataPage() {
                 <p className="mt-1 text-sm font-semibold text-ink">{donation.donorName}</p>
                 <p className="mt-1 text-xs text-muted">{donation.partyName ?? "Neznáma strana"}</p>
                 <p className="mt-1 text-sm font-mono text-ink">{eur.format(donation.amountEur)}</p>
-                <SourceLink href={donation.sourceUrl}>Register MV SR</SourceLink>
+                <SourceLink href={donationSourceUrl(donation.sourceUrl, donation.partyId)}>Register MV SR</SourceLink>
               </article>
             ))
           )}
@@ -212,4 +213,19 @@ function SourceLink({ href, children }: { href: string; children: React.ReactNod
       {children}
     </a>
   );
+}
+
+const partyRegisterSourceUrls: Record<string, string> = {
+  "smer-sd": "https://rez.vs.minv.sk/PolitickeStrany/detail?id_spolok=153097",
+  ps: "https://rez.vs.minv.sk/PolitickeStrany/detail?id_spolok=218725",
+  "hlas-sd": "https://rez.vs.minv.sk/PolitickeStrany/detail?id_spolok=227017",
+  kdh: "https://rez.vs.minv.sk/PolitickeStrany/detail?id_spolok=152973",
+  sns: "https://rez.vs.minv.sk/PolitickeStrany/detail?id_spolok=152976",
+  sas: "https://rez.vs.minv.sk/PolitickeStrany/detail?id_spolok=153180",
+  slovensko: "https://rez.vs.minv.sk/PolitickeStrany/detail?id_spolok=201471",
+};
+
+function donationSourceUrl(sourceUrl: string, partyId: string) {
+  if (!sourceUrl.includes("rppoz-oznamenia")) return sourceUrl;
+  return partyRegisterSourceUrls[partyId] ?? "https://rez.vs.minv.sk/PolitickeStrany";
 }

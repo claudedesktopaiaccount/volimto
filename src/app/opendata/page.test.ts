@@ -16,6 +16,12 @@ describe("opendata page contract queries", () => {
   });
 
   it("shows an explicit MV SR register link for party donations", () => {
-    expect(source).toContain("<SourceLink href={donation.sourceUrl}>Register MV SR</SourceLink>");
+    expect(source).toContain("<SourceLink href={donationSourceUrl(donation.sourceUrl, donation.partyId)}>Register MV SR</SourceLink>");
+  });
+
+  it("normalizes removed RPPOZ donation links before rendering", () => {
+    expect(source).toContain("partyId: donations.partyId");
+    expect(source).toContain("donationSourceUrl(donation.sourceUrl, donation.partyId)");
+    expect(source).toContain('sourceUrl.includes("rppoz-oznamenia")');
   });
 });
