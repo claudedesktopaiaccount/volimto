@@ -128,7 +128,7 @@ export default async function OpendataPage() {
                 <p className="mt-1 text-sm font-semibold text-ink">{donation.donorName}</p>
                 <p className="mt-1 text-xs text-muted">{donation.partyName ?? "Neznáma strana"}</p>
                 <p className="mt-1 text-sm font-mono text-ink">{eur.format(donation.amountEur)}</p>
-                <SourceLink href={donation.sourceUrl}>Zdroj RPPOZ</SourceLink>
+                <SourceLink href={donation.sourceUrl}>Register MV SR</SourceLink>
               </article>
             ))
           )}

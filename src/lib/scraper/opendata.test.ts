@@ -313,4 +313,11 @@ describe("getKnownDonations", () => {
     const result = getKnownDonations();
     expect(result.map((d) => d.partyId).filter((id) => !PARTY_IDS.includes(id))).toEqual([]);
   });
+
+  it("links donations to the current MV SR party register instead of the removed RPPOZ page", () => {
+    const result = getKnownDonations();
+
+    expect(result.map((d) => d.sourceUrl).filter((url) => url.includes("rppoz-oznamenia"))).toEqual([]);
+    expect(result.every((d) => d.sourceUrl.startsWith("https://rez.vs.minv.sk/PolitickeStrany"))).toBe(true);
+  });
 });

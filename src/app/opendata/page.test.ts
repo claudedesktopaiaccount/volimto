@@ -15,7 +15,7 @@ describe("opendata page contract queries", () => {
     expect(source).toContain("politicianName: mps.nameDisplay");
   });
 
-  it("shows an explicit RPPOZ source link for party donations", () => {
-    expect(source).toContain("<SourceLink href={donation.sourceUrl}>Zdroj RPPOZ</SourceLink>");
+  it("shows an explicit MV SR register link for party donations", () => {
+    expect(source).toContain("<SourceLink href={donation.sourceUrl}>Register MV SR</SourceLink>");
   });
 });

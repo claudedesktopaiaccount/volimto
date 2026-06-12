@@ -42,6 +42,22 @@ function donationKey(item: {
   ].join("|");
 }
 
+function donationMatchCondition(item: {
+  partyId: string;
+  donorName: string;
+  donorIco: string | null;
+  amountEur: number;
+  donationDate: string;
+}) {
+  return and(
+    eq(donations.partyId, item.partyId),
+    eq(donations.donorName, item.donorName),
+    item.donorIco ? eq(donations.donorIco, item.donorIco) : isNull(donations.donorIco),
+    eq(donations.amountEur, item.amountEur),
+    eq(donations.donationDate, item.donationDate)
+  );
+}
+
 export function isContractDateWithinVerifiedLink(
   signedDate: string,
   link: Pick<VerifiedPoliticianCompanyLink, "startDate" | "endDate">
@@ -342,10 +358,22 @@ export async function upsertDonations(
       donorIco: donations.donorIco,
       amountEur: donations.amountEur,
       donationDate: donations.donationDate,
+      sourceUrl: donations.sourceUrl,
     })
     .from(donations)
     .where(inArray(donations.partyId, [...new Set(validItems.map((item) => item.partyId))]));
-  const existingKeys = new Set(existingRows.map((item) => donationKey(item)));
+  const existingSourceUrls = new Map(existingRows.map((item) => [donationKey(item), item.sourceUrl]));
+  const existingKeys = new Set(existingSourceUrls.keys());
+
+  for (const item of validItems) {
+    if (existingSourceUrls.get(donationKey(item)) === item.sourceUrl) continue;
+    if (!existingKeys.has(donationKey(item))) continue;
+
+    await db
+      .update(donations)
+      .set({ sourceUrl: item.sourceUrl })
+      .where(donationMatchCondition(item));
+  }
 
   for (const batch of chunks(
     validItems.filter((item) => !existingKeys.has(donationKey(item))),

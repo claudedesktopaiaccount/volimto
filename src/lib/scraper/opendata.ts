@@ -449,11 +449,23 @@ export async function scrapePublicContracts(
 }
 
 // Known Donations (static seed)
-// Source: publicly available annual party financing reports (RPPOZ)
+// Source: publicly available annual party financing reports
 // published by Ministry of Interior SR, years 2019-2023.
-// URLs reference the official RPPOZ search portal.
+// URLs reference current official MV SR party register detail pages.
 
-const RPPOZ_BASE = "https://www.minv.sk/?rppoz-oznamenia";
+const PARTY_REGISTER_SOURCE_URLS: Record<string, string> = {
+  "smer-sd": "https://rez.vs.minv.sk/PolitickeStrany/detail?id_spolok=153097",
+  ps: "https://rez.vs.minv.sk/PolitickeStrany/detail?id_spolok=218725",
+  "hlas-sd": "https://rez.vs.minv.sk/PolitickeStrany/detail?id_spolok=227017",
+  kdh: "https://rez.vs.minv.sk/PolitickeStrany/detail?id_spolok=152973",
+  sns: "https://rez.vs.minv.sk/PolitickeStrany/detail?id_spolok=152976",
+  sas: "https://rez.vs.minv.sk/PolitickeStrany/detail?id_spolok=153180",
+  slovensko: "https://rez.vs.minv.sk/PolitickeStrany/detail?id_spolok=201471",
+};
+
+function partyRegisterSourceUrl(partyId: string): string {
+  return PARTY_REGISTER_SOURCE_URLS[partyId] ?? "https://rez.vs.minv.sk/PolitickeStrany";
+}
 
 export function getKnownDonations(): ScrapedDonation[] {
   return [
@@ -463,7 +475,7 @@ export function getKnownDonations(): ScrapedDonation[] {
       donorIco: "31340822",
       amountEur: 50000,
       donationDate: "2019-03-15",
-      sourceUrl: RPPOZ_BASE,
+      sourceUrl: partyRegisterSourceUrl("smer-sd"),
     },
     {
       partyId: "smer-sd",
@@ -471,7 +483,7 @@ export function getKnownDonations(): ScrapedDonation[] {
       donorIco: "44682484",
       amountEur: 20000,
       donationDate: "2020-06-01",
-      sourceUrl: RPPOZ_BASE,
+      sourceUrl: partyRegisterSourceUrl("smer-sd"),
     },
     {
       partyId: "smer-sd",
@@ -479,7 +491,7 @@ export function getKnownDonations(): ScrapedDonation[] {
       donorIco: null,
       amountEur: 5000,
       donationDate: "2021-04-10",
-      sourceUrl: RPPOZ_BASE,
+      sourceUrl: partyRegisterSourceUrl("smer-sd"),
     },
     {
       partyId: "ps",
@@ -487,7 +499,7 @@ export function getKnownDonations(): ScrapedDonation[] {
       donorIco: null,
       amountEur: 10000,
       donationDate: "2022-01-20",
-      sourceUrl: RPPOZ_BASE,
+      sourceUrl: partyRegisterSourceUrl("ps"),
     },
     {
       partyId: "ps",
@@ -495,7 +507,7 @@ export function getKnownDonations(): ScrapedDonation[] {
       donorIco: null,
       amountEur: 3000,
       donationDate: "2022-05-05",
-      sourceUrl: RPPOZ_BASE,
+      sourceUrl: partyRegisterSourceUrl("ps"),
     },
     {
       partyId: "ps",
@@ -503,7 +515,7 @@ export function getKnownDonations(): ScrapedDonation[] {
       donorIco: "31812341",
       amountEur: 15000,
       donationDate: "2023-02-14",
-      sourceUrl: RPPOZ_BASE,
+      sourceUrl: partyRegisterSourceUrl("ps"),
     },
     {
       partyId: "hlas-sd",
@@ -511,7 +523,7 @@ export function getKnownDonations(): ScrapedDonation[] {
       donorIco: null,
       amountEur: 25000,
       donationDate: "2021-11-01",
-      sourceUrl: RPPOZ_BASE,
+      sourceUrl: partyRegisterSourceUrl("hlas-sd"),
     },
     {
       partyId: "hlas-sd",
@@ -519,7 +531,7 @@ export function getKnownDonations(): ScrapedDonation[] {
       donorIco: "52641987",
       amountEur: 30000,
       donationDate: "2022-09-30",
-      sourceUrl: RPPOZ_BASE,
+      sourceUrl: partyRegisterSourceUrl("hlas-sd"),
     },
     {
       partyId: "kdh",
@@ -527,7 +539,7 @@ export function getKnownDonations(): ScrapedDonation[] {
       donorIco: "00687855",
       amountEur: 8000,
       donationDate: "2020-12-01",
-      sourceUrl: RPPOZ_BASE,
+      sourceUrl: partyRegisterSourceUrl("kdh"),
     },
     {
       partyId: "kdh",
@@ -535,7 +547,7 @@ export function getKnownDonations(): ScrapedDonation[] {
       donorIco: null,
       amountEur: 5000,
       donationDate: "2023-03-22",
-      sourceUrl: RPPOZ_BASE,
+      sourceUrl: partyRegisterSourceUrl("kdh"),
     },
     {
       partyId: "sns",
@@ -543,7 +555,7 @@ export function getKnownDonations(): ScrapedDonation[] {
       donorIco: null,
       amountEur: 12000,
       donationDate: "2019-08-15",
-      sourceUrl: RPPOZ_BASE,
+      sourceUrl: partyRegisterSourceUrl("sns"),
     },
     {
       partyId: "sns",
@@ -551,7 +563,7 @@ export function getKnownDonations(): ScrapedDonation[] {
       donorIco: "47920133",
       amountEur: 18000,
       donationDate: "2021-07-07",
-      sourceUrl: RPPOZ_BASE,
+      sourceUrl: partyRegisterSourceUrl("sns"),
     },
     {
       partyId: "sas",
@@ -559,7 +571,7 @@ export function getKnownDonations(): ScrapedDonation[] {
       donorIco: null,
       amountEur: 10000,
       donationDate: "2020-02-28",
-      sourceUrl: RPPOZ_BASE,
+      sourceUrl: partyRegisterSourceUrl("sas"),
     },
     {
       partyId: "sas",
@@ -567,7 +579,7 @@ export function getKnownDonations(): ScrapedDonation[] {
       donorIco: "31333532",
       amountEur: 40000,
       donationDate: "2022-11-10",
-      sourceUrl: RPPOZ_BASE,
+      sourceUrl: partyRegisterSourceUrl("sas"),
     },
     {
       partyId: "slovensko",
@@ -575,7 +587,7 @@ export function getKnownDonations(): ScrapedDonation[] {
       donorIco: null,
       amountEur: 100000,
       donationDate: "2019-12-01",
-      sourceUrl: RPPOZ_BASE,
+      sourceUrl: partyRegisterSourceUrl("slovensko"),
     },
   ];
 }
