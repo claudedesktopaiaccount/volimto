@@ -4,6 +4,7 @@ import { GET } from "./route";
 
 const mocks = vi.hoisted(() => ({
   getDb: vi.fn(() => ({ mocked: "db" })),
+  revalidateCacheTag: vi.fn(),
   scrapeAndStoreScandals: vi.fn(),
 }));
 
@@ -15,11 +16,16 @@ vi.mock("@/lib/scraper/scandals", () => ({
   scrapeAndStoreScandals: mocks.scrapeAndStoreScandals,
 }));
 
+vi.mock("@/lib/cache/tags", () => ({
+  revalidateCacheTag: mocks.revalidateCacheTag,
+}));
+
 describe("scrape scandals cron route", () => {
   beforeEach(() => {
     process.env.CRON_SECRET = "cron-secret";
     process.env.GEMINI_API_KEY = "gemini-secret";
     mocks.getDb.mockClear();
+    mocks.revalidateCacheTag.mockClear();
     mocks.scrapeAndStoreScandals.mockReset();
   });
 
@@ -61,6 +67,9 @@ describe("scrape scandals cron route", () => {
       12,
       { geminiApiKey: "gemini-secret" }
     );
+    expect(mocks.revalidateCacheTag).toHaveBeenCalledWith("kauzy");
+    expect(mocks.revalidateCacheTag).toHaveBeenCalledWith("opendata", { expire: 0 });
+    expect(mocks.revalidateCacheTag).toHaveBeenCalledWith("poslanci", { expire: 0 });
     expect(body).toMatchObject({ ok: true, scraped: 2, eventsUpserted: 5, draftsCreated: 1 });
   });
 });

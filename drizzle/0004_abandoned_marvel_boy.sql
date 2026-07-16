@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "contracts_source_url_unique" ON "contracts" USING btree ("source_url");

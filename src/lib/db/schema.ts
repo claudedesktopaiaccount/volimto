@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { pgTable, text, integer, doublePrecision, uniqueIndex, index, serial, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, doublePrecision, unique, uniqueIndex, index, serial, boolean } from "drizzle-orm/pg-core";
 
 // Rate Limits
 
@@ -30,6 +30,28 @@ export const parties = pgTable("parties", {
   logoUrl: text("logo_url"),
   portraitUrl: text("portrait_url"),
 });
+
+// Official legal identities of political parties. Keep these separate from
+// the presentation metadata above: a party can rename itself while retaining
+// the same legal entity, and historical identities need their own validity
+// window and source.
+export const partyRegistryIdentities = pgTable(
+  "party_registry_identities",
+  {
+    id: serial("id").primaryKey(),
+    partyId: text("party_id").notNull().references(() => parties.id),
+    ico: text("ico").notNull(),
+    registeredFrom: text("registered_from"),
+    registeredTo: text("registered_to"),
+    sourceUrl: text("source_url").notNull(),
+  },
+  (table) => [
+    index("party_registry_identities_ico_idx").on(table.ico),
+    unique("party_registry_identities_unique")
+      .on(table.partyId, table.ico, table.registeredFrom)
+      .nullsNotDistinct(),
+  ]
+);
 
 // Polls
 
@@ -692,11 +714,19 @@ export const politicianCompanyLinks = pgTable(
     startDate: text("start_date"),         // ISO date
     endDate: text("end_date"),             // ISO date, null = current
     sourceUrl: text("source_url").notNull(),
+    identitySourceUrl: text("identity_source_url"),
+    identityBirthDate: text("identity_birth_date"),
+    verificationMethod: text("verification_method"),
+    // Only "verified" rows may feed public contract/project attribution.
+    reviewStatus: text("review_status").notNull().default("needs_review"),
+    verifiedAt: text("verified_at"),
   },
   (table) => [
     index("pol_company_links_mp_id_idx").on(table.mpId),
     index("pol_company_links_company_id_idx").on(table.companyId),
-    uniqueIndex("pol_company_links_unique").on(table.mpId, table.companyId, table.relationship),
+    unique("pol_company_links_unique")
+      .on(table.mpId, table.companyId, table.relationship, table.startDate)
+      .nullsNotDistinct(),
   ]
 );
 
@@ -878,9 +908,72 @@ export const contracts = pgTable(
     linkedPoliticianId: integer("linked_politician_id").references(() => mps.id),
   },
   (table) => [
+    uniqueIndex("contracts_source_url_unique").on(table.sourceUrl),
     index("contracts_supplier_ico_idx").on(table.supplierIco),
     index("contracts_signed_date_idx").on(table.signedDate),
     index("contracts_linked_politician_id_idx").on(table.linkedPoliticianId),
+  ]
+);
+
+// ITMS2014+ projects. `contractedAmount` is the amount committed in the
+// project contract; it is not presented as a dated payment to the recipient.
+export const itmsProjects = pgTable(
+  "itms_projects",
+  {
+    id: serial("id").primaryKey(),
+    itmsId: integer("itms_id").notNull(),
+    sourceState: text("source_state").notNull(),
+    projectCode: text("project_code").notNull(),
+    titleSk: text("title_sk").notNull(),
+    contractNumber: text("contract_number"),
+    recipientIco: text("recipient_ico"),
+    recipientSubjectId: integer("recipient_subject_id"),
+    contractedAmount: doublePrecision("contracted_amount").notNull(),
+    effectiveDate: text("effective_date"),
+    status: text("status"),
+    sourceUpdatedAt: text("source_updated_at"),
+    sourceUrl: text("source_url").notNull(),
+  },
+  (table) => [
+    uniqueIndex("itms_projects_itms_id_unique").on(table.itmsId),
+    index("itms_projects_recipient_ico_idx").on(table.recipientIco),
+    index("itms_projects_effective_date_idx").on(table.effectiveDate),
+    index("itms_projects_amount_idx").on(table.contractedAmount),
+  ]
+);
+
+// Evidence-preserving many-to-many paths. One project can legitimately have
+// several KUV/politician paths; never collapse these into one politician ID.
+export const itmsProjectPoliticianLinks = pgTable(
+  "itms_project_politician_links",
+  {
+    id: serial("id").primaryKey(),
+    projectId: integer("project_id")
+      .notNull()
+      .references(() => itmsProjects.id, { onDelete: "cascade" }),
+    mpId: integer("mp_id")
+      .notNull()
+      .references(() => mps.id, { onDelete: "cascade" }),
+    pathType: text("path_type").notNull(),
+    eventDate: text("event_date").notNull(),
+    eventDateBasis: text("event_date_basis").notNull(),
+    rpvsRegistrationId: integer("rpvs_registration_id").notNull(),
+    rpvsPartnerId: integer("rpvs_partner_id").notNull(),
+    rpvsBeneficialOwnerId: integer("rpvs_beneficial_owner_id").notNull(),
+    rpvsRegistrationSourceUrl: text("rpvs_registration_source_url").notNull(),
+    rpvsBeneficialOwnerSourceUrl: text("rpvs_beneficial_owner_source_url").notNull(),
+    politicianSourceUrl: text("politician_source_url").notNull(),
+    verifiedAt: text("verified_at").notNull(),
+  },
+  (table) => [
+    index("itms_project_politician_links_project_idx").on(table.projectId),
+    index("itms_project_politician_links_mp_idx").on(table.mpId),
+    uniqueIndex("itms_project_politician_links_path_unique").on(
+      table.projectId,
+      table.mpId,
+      table.rpvsRegistrationId,
+      table.rpvsBeneficialOwnerId
+    ),
   ]
 );
 
@@ -891,7 +984,18 @@ export const partiesRelations = relations(parties, ({ many }) => ({
   mps: many(mps),
   promises: many(promises),
   donations: many(donations),
+  registryIdentities: many(partyRegistryIdentities),
 }));
+
+export const partyRegistryIdentitiesRelations = relations(
+  partyRegistryIdentities,
+  ({ one }) => ({
+    party: one(parties, {
+      fields: [partyRegistryIdentities.partyId],
+      references: [parties.id],
+    }),
+  })
+);
 
 export const pollsRelations = relations(polls, ({ many }) => ({
   results: many(pollResults),

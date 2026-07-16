@@ -5,9 +5,7 @@ import {
   parseCrzExportXml,
   scrapeRpvsCompanies,
   scrapePublicContracts,
-  getKnownDonations,
 } from "./opendata";
-import { PARTY_IDS } from "@/lib/parties";
 
 // ─── parseSlovakNumber ────────────────────────────────────
 
@@ -102,34 +100,68 @@ describe("scrapeRpvsCompanies", () => {
     expect(result).toHaveLength(1);
   });
 
-  it("returns [] and warns when fetcher throws", async () => {
+  it("does not publish an untrusted detail URL from an RPVS record", async () => {
+    const fetcher = async () => JSON.stringify([
+      {
+        Id: 42,
+        Partner: { Id: 99 },
+        Ico: "12345678",
+        ObchodneMeno: "Testová firma, s.r.o.",
+        Url: "https://example.com/not-rpvs",
+      },
+    ]);
+
+    const [company] = await scrapeRpvsCompanies(10, fetcher);
+
+    expect(company.rpvsUboUrl).toBe(
+      "https://rpvs.gov.sk/rpvs/Partner/Partner/Detail/99"
+    );
+  });
+
+  it("does not mistake the historical registration ID for Partner.Id", async () => {
+    const fetcher = async () => JSON.stringify([{
+      Id: 42,
+      Ico: "12345678",
+      ObchodneMeno: "Testová firma, s.r.o.",
+    }]);
+
+    const [company] = await scrapeRpvsCompanies(10, fetcher);
+
+    expect(company.rpvsUboUrl).toBeNull();
+  });
+
+  it("rejects when the initial fetch fails", async () => {
     const fetcher = async (): Promise<string> => {
       throw new Error("network error");
     };
-    const result = await scrapeRpvsCompanies(10, fetcher);
-    expect(result).toEqual([]);
+    await expect(scrapeRpvsCompanies(10, fetcher)).rejects.toThrow(
+      "RPVS company fetch failed on page 1"
+    );
   });
 
-  it("returns [] when response is not JSON", async () => {
+  it("rejects when response is not JSON", async () => {
     const fetcher = async () => "not json at all";
-    const result = await scrapeRpvsCompanies(10, fetcher);
-    expect(result).toEqual([]);
+    await expect(scrapeRpvsCompanies(10, fetcher)).rejects.toThrow(
+      "RPVS company JSON parse failed on page 1"
+    );
   });
 
-  it("returns [] when JSON is not an array", async () => {
+  it("rejects when JSON is not an array", async () => {
     const fetcher = async () => JSON.stringify({ error: "oops" });
-    const result = await scrapeRpvsCompanies(10, fetcher);
-    expect(result).toEqual([]);
+    await expect(scrapeRpvsCompanies(10, fetcher)).rejects.toThrow(
+      "Malformed RPVS company response on page 1"
+    );
   });
 
   it("parses current RPVS OData wrapper and follows nextLink", async () => {
     const responses = new Map([
       [
-        "https://rpvs.gov.sk/opendatav2/PartneriVerejnehoSektora",
+        "https://rpvs.gov.sk/opendatav2/PartneriVerejnehoSektora?$expand=Partner",
         JSON.stringify({
           value: [
             {
               Id: 123,
+              Partner: { Id: 1001 },
               ObchodneMeno: "ZELEX, s.r.o.",
               Ico: "47 559 870",
               FormaOsoby: "PravnickaOsoba",
@@ -160,7 +192,7 @@ describe("scrapeRpvsCompanies", () => {
       ico: "47559870",
       name: "ZELEX, s.r.o.",
       legalForm: "s.r.o.",
-      rpvsUboUrl: "https://rpvs.gov.sk/rpvs/Partner/Partner/Detail/123",
+      rpvsUboUrl: "https://rpvs.gov.sk/rpvs/Partner/Partner/Detail/1001",
     });
   });
 
@@ -174,6 +206,37 @@ describe("scrapeRpvsCompanies", () => {
     const result = await scrapeRpvsCompanies(10, fetcher);
     expect(result).toHaveLength(1);
     expect(result[0].ico).toBe("11111111");
+  });
+
+  it("rejects instead of returning partial data when a later page fails", async () => {
+    const nextLink =
+      "https://rpvs.gov.sk/opendatav2/PartneriVerejnehoSektora?$skiptoken=Id-123";
+    const fetcher = async (url: string) => {
+      if (url === nextLink) throw new Error("upstream timeout");
+      return JSON.stringify({
+        value: [
+          { Id: 123, Ico: "12345678", ObchodneMeno: "Prvá firma, s.r.o." },
+        ],
+        "@odata.nextLink": nextLink,
+      });
+    };
+
+    await expect(scrapeRpvsCompanies(10, fetcher)).rejects.toThrow(
+      "RPVS company fetch failed on page 2"
+    );
+  });
+
+  it("rejects pagination links outside the official RPVS collection", async () => {
+    const fetcher = async () => JSON.stringify({
+      value: [
+        { Id: 123, Ico: "12345678", ObchodneMeno: "Prvá firma, s.r.o." },
+      ],
+      "@odata.nextLink": "https://example.com/collect",
+    });
+
+    await expect(scrapeRpvsCompanies(10, fetcher)).rejects.toThrow(
+      "Unsafe RPVS company nextLink"
+    );
   });
 });
 
@@ -205,6 +268,17 @@ describe("scrapePublicContracts", () => {
     const fetcher = async () => mockCsv;
     const result = await scrapePublicContracts(10, fetcher);
     expect(result[1].contractNumber).toBeNull();
+  });
+
+  it("builds a canonical CRZ detail URL from the export ID when URL is absent", async () => {
+    const csv = [
+      "ID;Predmet;DodavatelICO;DodavatelNazov;CenaSDPH;DatumZverejnenia;Url",
+      "987;Zmluva;12345678;Dodávateľ;100,00;02.02.2026;",
+    ].join("\n");
+
+    const [contract] = await scrapePublicContracts(10, async () => csv);
+
+    expect(contract.sourceUrl).toBe("https://www.crz.gov.sk/zmluva/987/");
   });
 
   it("respects limit parameter", async () => {
@@ -273,51 +347,5 @@ describe("parseCrzExportXml", () => {
       signedDate: "2013-06-27",
       sourceUrl: "https://www.crz.gov.sk/zmluva/961292/",
     });
-  });
-});
-
-// ─── getKnownDonations ────────────────────────────────────
-
-describe("getKnownDonations", () => {
-  it("returns non-empty array", () => {
-    const result = getKnownDonations();
-    expect(result.length).toBeGreaterThan(0);
-  });
-
-  it("each item has required shape", () => {
-    const result = getKnownDonations();
-    for (const d of result) {
-      expect(typeof d.partyId).toBe("string");
-      expect(d.partyId.length).toBeGreaterThan(0);
-      expect(typeof d.donorName).toBe("string");
-      expect(d.donorName.length).toBeGreaterThan(0);
-      expect(typeof d.amountEur).toBe("number");
-      expect(d.amountEur).toBeGreaterThan(0);
-      expect(typeof d.donationDate).toBe("string");
-      // ISO date format: YYYY-MM-DD
-      expect(d.donationDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-      expect(typeof d.sourceUrl).toBe("string");
-      expect(d.sourceUrl.length).toBeGreaterThan(0);
-      // donorIco is string or null
-      expect(d.donorIco === null || typeof d.donorIco === "string").toBe(true);
-    }
-  });
-
-  it("contains entries for multiple parties", () => {
-    const result = getKnownDonations();
-    const partyIds = new Set(result.map((d) => d.partyId));
-    expect(partyIds.size).toBeGreaterThanOrEqual(3);
-  });
-
-  it("uses party IDs that exist in the app registry", () => {
-    const result = getKnownDonations();
-    expect(result.map((d) => d.partyId).filter((id) => !PARTY_IDS.includes(id))).toEqual([]);
-  });
-
-  it("links donations to the current MV SR party register instead of the removed RPPOZ page", () => {
-    const result = getKnownDonations();
-
-    expect(result.map((d) => d.sourceUrl).filter((url) => url.includes("rppoz-oznamenia"))).toEqual([]);
-    expect(result.every((d) => d.sourceUrl.startsWith("https://rez.vs.minv.sk/PolitickeStrany"))).toBe(true);
   });
 });

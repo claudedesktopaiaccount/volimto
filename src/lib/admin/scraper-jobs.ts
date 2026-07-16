@@ -7,6 +7,10 @@ import { GET as scrapePolls } from "@/app/api/cron/scrape-polls/route";
 import { GET as scrapePrograms } from "@/app/api/cron/scrape-programs/route";
 import { GET as scrapeScandals } from "@/app/api/cron/scrape-scandals/route";
 import {
+  formatOpendataImportError,
+  runConfiguredOpendataImport,
+} from "@/lib/opendata-import";
+import {
   SCRAPER_JOB_IDS,
   SCRAPER_JOB_OPTIONS,
   type ScraperJobId,
@@ -48,6 +52,25 @@ export function getScraperJobMeta(id: ScraperJobId) {
 }
 
 export async function runScraperJob(id: ScraperJobId): Promise<ScraperRunResult> {
+  // The admin endpoint is already authenticated. Run OpenData's shared import
+  // service directly so a manual import does not depend on a second secret.
+  if (id === "opendata") {
+    try {
+      const result = await runConfiguredOpendataImport();
+      return {
+        ok: true,
+        status: 200,
+        data: { ok: true, ...result },
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        status: 502,
+        data: formatOpendataImportError(error),
+      };
+    }
+  }
+
   const secret = process.env.CRON_SECRET;
   if (!secret) {
     throw new Error("Missing CRON_SECRET for internal scraper run");

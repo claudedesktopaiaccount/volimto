@@ -1,8 +1,13 @@
 import { revalidateTag } from "next/cache";
 
-export function revalidateCacheTag(tag: string) {
+type RevalidationProfile = "max" | { expire?: number };
+
+export function revalidateCacheTag(
+  tag: string,
+  profile: RevalidationProfile = "max"
+) {
   try {
-    revalidateTag(tag, "max");
+    revalidateTag(tag, profile);
   } catch (error) {
     const isVitestContextError =
       process.env.NODE_ENV === "test" &&

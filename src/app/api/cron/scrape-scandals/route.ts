@@ -18,6 +18,13 @@ export async function GET(req: NextRequest) {
       geminiApiKey: process.env.GEMINI_API_KEY,
     });
     revalidateCacheTag("kauzy");
+    if (
+      result.financialLinks.upserted > 0 ||
+      result.financialLinks.linkedContracts > 0
+    ) {
+      revalidateCacheTag("opendata", { expire: 0 });
+      revalidateCacheTag("poslanci", { expire: 0 });
+    }
     return NextResponse.json({ ok: true, ...result });
   } catch (error) {
     console.error("[cron] scrape-scandals error:", error);

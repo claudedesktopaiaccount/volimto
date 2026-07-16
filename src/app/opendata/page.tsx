@@ -1,231 +1,147 @@
 import type { Metadata } from "next";
 import { unstable_cache } from "next/cache";
-import { desc, eq, isNotNull, sql } from "drizzle-orm";
 import PageHeader from "@/components/ui/PageHeader";
 import { getDb } from "@/lib/db";
-import { companies, contracts, donations, mps, parties, politicianCompanyLinks } from "@/lib/db/schema";
+import {
+  getOpendataAnalytics,
+  type OpendataAnalyticsData,
+} from "@/lib/db/opendata-analytics";
+import {
+  hasActiveContractFilters,
+  parseOpendataFilters,
+  type OpendataFilters as Filters,
+  type OpendataSearchParams,
+} from "@/lib/opendata-dashboard";
 import { isStaticBuild, withTimeout } from "@/lib/runtime-data";
+import OpendataFilters from "./OpendataFilters";
+import {
+  CompanyStats,
+  CompaniesView,
+  ContractStats,
+  ContractsView,
+  ItmsStats,
+  OpendataScopeNotice,
+  OpendataTabs,
+  OverviewView,
+  PoliticsView,
+} from "./OpendataViews";
 
-export const revalidate = 21600;
+export const revalidate = 21_600;
 
 export const metadata: Metadata = {
-  title: "Opendata — VolímTo",
+  title: "Kam tečú verejné peniaze — VolímTo",
   description:
-    "Verejné zmluvy, dary politickým stranám a firemné prepojenia politikov z otvorených dát.",
+    "Interaktívny prehľad zmlúv CRZ, projektov ITMS a firiem RPVS so zdrojovo overenými politickými väzbami.",
 };
 
-const eur = new Intl.NumberFormat("sk-SK", {
-  style: "currency",
-  currency: "EUR",
-  maximumFractionDigits: 0,
-});
-
 const getCachedOpendata = unstable_cache(
-  async () => {
-    const db = getDb();
-
-    const [contractRows, donationRows, companyRows, totals] = await Promise.all([
-      db
-        .select({
-          id: contracts.id,
-          titleSk: contracts.titleSk,
-          supplierName: contracts.supplierName,
-          amountEur: contracts.amountEur,
-          signedDate: contracts.signedDate,
-          sourceUrl: contracts.sourceUrl,
-          politicianName: mps.nameDisplay,
-        })
-        .from(contracts)
-        .innerJoin(mps, eq(contracts.linkedPoliticianId, mps.id))
-        .where(isNotNull(contracts.linkedPoliticianId))
-        .orderBy(desc(contracts.signedDate))
-        .limit(8),
-      db
-        .select({
-          id: donations.id,
-          partyId: donations.partyId,
-          partyName: parties.name,
-          donorName: donations.donorName,
-          amountEur: donations.amountEur,
-          donationDate: donations.donationDate,
-          sourceUrl: donations.sourceUrl,
-        })
-        .from(donations)
-        .leftJoin(parties, sql`${parties.id} = ${donations.partyId}`)
-        .orderBy(desc(donations.amountEur))
-        .limit(8),
-      db
-        .select({
-          id: politicianCompanyLinks.id,
-          companyName: companies.name,
-          ico: companies.ico,
-          relationship: politicianCompanyLinks.relationship,
-          sourceUrl: politicianCompanyLinks.sourceUrl,
-        })
-        .from(politicianCompanyLinks)
-        .innerJoin(companies, sql`${politicianCompanyLinks.companyId} = ${companies.id}`)
-        .orderBy(desc(politicianCompanyLinks.id))
-        .limit(8),
-      db
-        .select({
-          contractCount: sql<number>`count(distinct ${contracts.id})`.mapWith(Number),
-          contractAmount: sql<number>`coalesce(sum(${contracts.amountEur}), 0)`.mapWith(Number),
-        })
-        .from(contracts)
-        .where(isNotNull(contracts.linkedPoliticianId)),
-    ]);
-
-    return {
-      contracts: contractRows,
-      donations: donationRows,
-      companies: companyRows,
-      totals: totals[0] ?? { contractCount: 0, contractAmount: 0 },
-    };
-  },
-  ["opendata-page-data"],
-  { revalidate: 21600, tags: ["opendata"] }
+  async (filters: Filters, todayIso: string) =>
+    getOpendataAnalytics(getDb(), filters, todayIso),
+  ["opendata-analytics-v3"],
+  { revalidate: 21_600, tags: ["opendata"] }
 );
 
-export default async function OpendataPage() {
-  const data = await loadOpendata();
+export default async function OpendataPage({
+  searchParams,
+}: {
+  searchParams: Promise<OpendataSearchParams>;
+}) {
+  const filters = parseOpendataFilters(await searchParams);
+  const result = await loadOpendata(filters);
+
+  if (result.status === "unavailable") {
+    return (
+      <div className="mx-auto max-w-content px-4 py-8 sm:px-6">
+        <PageHeader
+          eyebrow="Otvorené dáta"
+          title="Kam tečú verejné peniaze"
+          description="Interaktívny prehľad zmlúv CRZ, projektov ITMS a firiem z importu RPVS."
+        />
+        <section
+          role="status"
+          className="rounded-panel border border-warning-border bg-warning-bg p-6 text-sm text-ink"
+        >
+          <h2 className="font-bold">Dáta sa teraz nepodarilo načítať</h2>
+          <p className="mt-2 text-secondary">
+            Toto nie je nulový výsledok. Databáza je dočasne nedostupná; skúste
+            stránku obnoviť o chvíľu.
+          </p>
+        </section>
+      </div>
+    );
+  }
+
+  const { data } = result;
 
   return (
     <div className="mx-auto max-w-content px-4 py-8 sm:px-6">
       <PageHeader
         eyebrow="Otvorené dáta"
-        title="Zmluvy, dary a firemné prepojenia"
-        description="Verejný pohľad na dátové vrstvy, ktoré majú overenú väzbu na politiku: dary stranám, firemné prepojenia politikov a zmluvy naviazané na tieto prepojenia."
+        title="Kam tečú verejné peniaze"
+        description={`${formatCount(data.dataset.contractCount)} zmlúv CRZ, ${formatCount(data.itmsSummary.projectCount)} projektov ITMS a ${formatCount(data.dataset.rpvsCompanyCount)} firiem v importe RPVS.`}
+        className="mb-5"
       />
 
-      <section className="mb-8 grid gap-px bg-border sm:grid-cols-2">
-        <Stat label="Politicky naviazaných zmlúv" value={data.totals.contractCount.toLocaleString("sk-SK")} />
-        <Stat label="Hodnota naviazaných zmlúv" value={eur.format(data.totals.contractAmount)} />
-      </section>
+      <OpendataScopeNotice
+        linkedContractCount={data.dataset.linkedContractCount}
+        linkedItmsProjectCount={data.itmsSummary.linkedProjectCount}
+      />
+      <OpendataTabs filters={filters} data={data} />
 
-      <div className="grid gap-8 lg:grid-cols-3">
-        <DataBlock title="Zmluvy s overeným politickým prepojením">
-          {data.contracts.length === 0 ? (
-            <Empty text="Zatiaľ nemáme žiadne zmluvy s overeným prepojením na politika." />
-          ) : (
-            data.contracts.map((contract) => (
-              <a key={contract.id} href={contract.sourceUrl} target="_blank" rel="noopener" className="block border-b border-divider py-3 hover:bg-hover">
-                <p className="text-xs font-mono text-muted">{contract.signedDate}</p>
-                <p className="mt-1 line-clamp-2 text-sm font-semibold text-ink">{contract.titleSk}</p>
-                <p className="mt-1 text-xs text-muted">{contract.supplierName}</p>
-                <p className="mt-1 text-xs font-semibold text-secondary">Prepojenie: {contract.politicianName}</p>
-                <p className="mt-1 text-sm font-mono text-ink">{eur.format(contract.amountEur)}</p>
-              </a>
-            ))
-          )}
-        </DataBlock>
+      {filters.view === "companies" ? (
+        <CompanyStats data={data} />
+      ) : filters.view === "politics" ? (
+        <ItmsStats data={data} />
+      ) : (
+        <ContractStats data={data} filtered={hasActiveContractFilters(filters)} />
+      )}
 
-        <DataBlock title="Najväčšie dary stranám">
-          {data.donations.length === 0 ? (
-            <Empty />
-          ) : (
-            data.donations.map((donation) => (
-              <article key={donation.id} className="border-b border-divider py-3">
-                <p className="text-xs font-mono text-muted">{donation.donationDate}</p>
-                <p className="mt-1 text-sm font-semibold text-ink">{donation.donorName}</p>
-                <p className="mt-1 text-xs text-muted">{donation.partyName ?? "Neznáma strana"}</p>
-                <p className="mt-1 text-sm font-mono text-ink">{eur.format(donation.amountEur)}</p>
-                <SourceLink href={donationSourceUrl(donation.sourceUrl, donation.partyId)}>Register MV SR</SourceLink>
-              </article>
-            ))
-          )}
-        </DataBlock>
+      {filters.view !== "politics" && (
+        <OpendataFilters
+          key={`${filters.view}:${filters.query}`}
+          filters={filters}
+          years={data.years}
+          parties={data.partyOptions}
+          legalForms={data.legalForms}
+        />
+      )}
 
-        <DataBlock title="Firemné prepojenia">
-          {data.companies.length === 0 ? (
-            <Empty />
-          ) : (
-            data.companies.map((company) => (
-              <a key={company.id} href={company.sourceUrl} target="_blank" rel="noopener" className="block border-b border-divider py-3 hover:bg-hover">
-                <p className="text-xs font-mono text-muted">IČO {company.ico}</p>
-                <p className="mt-1 text-sm font-semibold text-ink">{company.companyName}</p>
-                <p className="mt-1 text-xs text-muted">{company.relationship}</p>
-              </a>
-            ))
-          )}
-        </DataBlock>
-      </div>
+      {filters.view === "overview" && <OverviewView data={data} filters={filters} />}
+      {filters.view === "contracts" && <ContractsView data={data} filters={filters} />}
+      {filters.view === "companies" && <CompaniesView data={data} filters={filters} />}
+      {filters.view === "politics" && <PoliticsView data={data} filters={filters} />}
     </div>
   );
 }
 
-async function loadOpendata() {
+async function loadOpendata(filters: Filters): Promise<
+  | { status: "ready"; data: OpendataAnalyticsData }
+  | { status: "unavailable" }
+> {
   if (!process.env.DATABASE_URL || isStaticBuild()) {
-    return {
-      contracts: [],
-      donations: [],
-      companies: [],
-      totals: { contractCount: 0, contractAmount: 0 },
-    };
+    return { status: "unavailable" };
   }
 
   try {
-    return await withTimeout("opendata database load", () => getCachedOpendata());
+    const todayIso = new Intl.DateTimeFormat("sv-SE", {
+      timeZone: "Europe/Bratislava",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date());
+
+    const data = await withTimeout(
+      "opendata analytics database load",
+      () => getCachedOpendata(filters, todayIso),
+      8_000
+    );
+    return { status: "ready", data };
   } catch (error) {
-    console.error("[opendata] failed to load data", error);
-    return {
-      contracts: [],
-      donations: [],
-      companies: [],
-      totals: { contractCount: 0, contractAmount: 0 },
-    };
+    console.error("[opendata] failed to load analytics", error);
+    return { status: "unavailable" };
   }
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="bg-card p-4">
-      <p className="text-label text-muted">{label}</p>
-      <p className="mt-2 text-2xl font-extrabold tabular-nums text-ink">{value}</p>
-    </div>
-  );
-}
-
-function DataBlock({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section>
-      <h2 className="border-b-3 border-ink pb-2 text-lg font-extrabold text-ink">{title}</h2>
-      <div className="mt-2">{children}</div>
-    </section>
-  );
-}
-
-function Empty({ text = "Dáta zatiaľ nie sú dostupné." }: { text?: string }) {
-  return (
-    <div className="border border-border bg-card p-6 text-sm text-muted">
-      {text}
-    </div>
-  );
-}
-
-function SourceLink({ href, children }: { href: string; children: React.ReactNode }) {
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="mt-2 inline-block text-xs font-mono font-semibold text-accent hover:underline"
-    >
-      {children}
-    </a>
-  );
-}
-
-const partyRegisterSourceUrls: Record<string, string> = {
-  "smer-sd": "https://rez.vs.minv.sk/PolitickeStrany/detail?id_spolok=153097",
-  ps: "https://rez.vs.minv.sk/PolitickeStrany/detail?id_spolok=218725",
-  "hlas-sd": "https://rez.vs.minv.sk/PolitickeStrany/detail?id_spolok=227017",
-  kdh: "https://rez.vs.minv.sk/PolitickeStrany/detail?id_spolok=152973",
-  sns: "https://rez.vs.minv.sk/PolitickeStrany/detail?id_spolok=152976",
-  sas: "https://rez.vs.minv.sk/PolitickeStrany/detail?id_spolok=153180",
-  slovensko: "https://rez.vs.minv.sk/PolitickeStrany/detail?id_spolok=201471",
-};
-
-function donationSourceUrl(sourceUrl: string, partyId: string) {
-  if (!sourceUrl.includes("rppoz-oznamenia")) return sourceUrl;
-  return partyRegisterSourceUrls[partyId] ?? "https://rez.vs.minv.sk/PolitickeStrany";
+function formatCount(value: number): string {
+  return value.toLocaleString("sk-SK");
 }

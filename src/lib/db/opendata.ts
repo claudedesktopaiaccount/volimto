@@ -1,6 +1,6 @@
 import type { Database } from "./index";
 import { companies, contracts, donations, mps, parties, politicianCompanyLinks } from "./schema";
-import { and, eq, gte, inArray, isNull, lte, or, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import type {
   ScrapedCompany,
   ScrapedContract,
@@ -77,10 +77,94 @@ export function verifiedLinkMatchesContract(
   );
 }
 
-export function isPubliclyRelevantContract(
-  contract: { linkedPoliticianId: number | null | undefined }
-): boolean {
-  return contract.linkedPoliticianId != null;
+export interface StoredPoliticianCompanyLinkRow {
+  mpId: number;
+  companyIco: string;
+  startDate: string | null;
+  endDate: string | null;
+}
+
+export interface ContractPoliticianLinkRow {
+  id: number;
+  supplierIco: string;
+  signedDate: string;
+  linkedPoliticianId?: number | null;
+}
+
+export interface StoredPoliticianCompanyLinkResolution {
+  assignments: Array<{
+    contractId: number;
+    mpId: number;
+    expectedLinkedPoliticianId: number | null;
+  }>;
+  removals: Array<{ contractId: number; expectedLinkedPoliticianId: number }>;
+  ambiguousContractIds: number[];
+}
+
+/**
+ * Resolve contracts against persisted politician-company links.
+ * Multiple relationship rows for the same MP count as one match; contracts
+ * matching more than one unique MP are reported and never assigned.
+ *
+ * Every public contract attribution must be reproducible from the verified
+ * relationship rows. Unsupported legacy or manual IDs are cleared instead of
+ * being presented as evidence-backed links.
+ */
+export function resolveStoredPoliticianCompanyLinks(
+  contractRows: ContractPoliticianLinkRow[],
+  linkRows: StoredPoliticianCompanyLinkRow[]
+): StoredPoliticianCompanyLinkResolution {
+  const linksByIco = new Map<string, StoredPoliticianCompanyLinkRow[]>();
+
+  for (const link of linkRows) {
+    const ico = normalizeIco(link.companyIco);
+    if (!ico) continue;
+    const links = linksByIco.get(ico) ?? [];
+    links.push(link);
+    linksByIco.set(ico, links);
+  }
+
+  const assignments: StoredPoliticianCompanyLinkResolution["assignments"] = [];
+  const removals: StoredPoliticianCompanyLinkResolution["removals"] = [];
+  const ambiguousContractIds: number[] = [];
+
+  for (const contract of [...contractRows].sort((a, b) => a.id - b.id)) {
+    const ico = normalizeIco(contract.supplierIco);
+    if (!ico) continue;
+
+    const companyLinks = linksByIco.get(ico) ?? [];
+    const currentMpId = contract.linkedPoliticianId ?? null;
+    const matchingMpIds = [
+      ...new Set(
+        companyLinks
+          .filter((link) => isContractDateWithinVerifiedLink(contract.signedDate, link))
+          .map((link) => link.mpId)
+      ),
+    ].sort((a, b) => a - b);
+
+    if (matchingMpIds.length === 1) {
+      const mpId = matchingMpIds[0];
+      if (currentMpId !== mpId) {
+        assignments.push({
+          contractId: contract.id,
+          mpId,
+          expectedLinkedPoliticianId: currentMpId,
+        });
+      }
+    } else {
+      if (matchingMpIds.length > 1) {
+        ambiguousContractIds.push(contract.id);
+      }
+      if (currentMpId !== null) {
+        removals.push({
+          contractId: contract.id,
+          expectedLinkedPoliticianId: currentMpId,
+        });
+      }
+    }
+  }
+
+  return { assignments, removals, ambiguousContractIds };
 }
 
 // ─── Companies ────────────────────────────────────────────
@@ -138,10 +222,7 @@ export async function upsertCompanies(
 
 // ─── Contracts ────────────────────────────────────────────
 
-/**
- * Insert contracts. Uses onConflictDoNothing — no reliable unique key.
- * Returns count of rows inserted.
- */
+/** Insert contracts once per canonical CRZ source URL. */
 export async function upsertVerifiedPoliticianCompanyLinks(
   db: Database,
   items: VerifiedPoliticianCompanyLink[]
@@ -153,16 +234,23 @@ export async function upsertVerifiedPoliticianCompanyLinks(
     .filter((item) => item.mpSlug && item.ico && item.companyName && item.sourceUrl);
   if (!normalized.length) return 0;
 
-  const companyValues = normalized.map((item) => ({
-    ico: item.ico,
-    name: item.companyName,
-    legalForm: null,
-    rpvsUboUrl: null,
-    finstatUrl: null,
-    foundedDate: null,
-    sector: null,
-    addressSk: null,
-  }));
+  const companyValues = [
+    ...new Map(
+      normalized.map((item) => [
+        item.ico,
+        {
+          ico: item.ico,
+          name: item.companyName,
+          legalForm: null,
+          rpvsUboUrl: item.sourceUrl,
+          finstatUrl: null,
+          foundedDate: null,
+          sector: null,
+          addressSk: null,
+        },
+      ] as const)
+    ).values(),
+  ];
 
   for (const batch of chunks(companyValues, CHUNK)) {
     await db
@@ -172,6 +260,7 @@ export async function upsertVerifiedPoliticianCompanyLinks(
         target: companies.ico,
         set: {
           name: excluded(companies.name.name),
+          rpvsUboUrl: excluded(companies.rpvsUboUrl.name),
         },
       });
   }
@@ -187,7 +276,14 @@ export async function upsertVerifiedPoliticianCompanyLinks(
 
   const mpIdBySlug = new Map(mpRows.map((mp) => [mp.slug, mp.id]));
   const companyIdByIco = new Map(companyRows.map((company) => [company.ico, company.id]));
-  const rows = normalized
+  const rows = [
+    ...new Map(
+      normalized.map((item) => [
+        [item.mpSlug, item.ico, item.relationship, item.startDate ?? ""].join("|"),
+        item,
+      ] as const)
+    ).values(),
+  ]
     .map((item) => {
       const mpId = mpIdBySlug.get(item.mpSlug);
       const companyId = companyIdByIco.get(item.ico);
@@ -199,6 +295,11 @@ export async function upsertVerifiedPoliticianCompanyLinks(
         startDate: item.startDate,
         endDate: item.endDate,
         sourceUrl: item.sourceUrl,
+        identitySourceUrl: item.identitySourceUrl,
+        identityBirthDate: item.identityBirthDate,
+        verificationMethod: item.verificationMethod,
+        reviewStatus: "verified",
+        verifiedAt: item.verifiedAt,
       };
     })
     .filter((row): row is NonNullable<typeof row> => row !== null);
@@ -213,11 +314,17 @@ export async function upsertVerifiedPoliticianCompanyLinks(
           politicianCompanyLinks.mpId,
           politicianCompanyLinks.companyId,
           politicianCompanyLinks.relationship,
+          politicianCompanyLinks.startDate,
         ],
         set: {
           startDate: excluded(politicianCompanyLinks.startDate.name),
           endDate: excluded(politicianCompanyLinks.endDate.name),
           sourceUrl: excluded(politicianCompanyLinks.sourceUrl.name),
+          identitySourceUrl: excluded(politicianCompanyLinks.identitySourceUrl.name),
+          identityBirthDate: excluded(politicianCompanyLinks.identityBirthDate.name),
+          verificationMethod: excluded(politicianCompanyLinks.verificationMethod.name),
+          reviewStatus: excluded(politicianCompanyLinks.reviewStatus.name),
+          verifiedAt: excluded(politicianCompanyLinks.verifiedAt.name),
         },
       })
       .returning({ id: politicianCompanyLinks.id });
@@ -227,44 +334,111 @@ export async function upsertVerifiedPoliticianCompanyLinks(
   return count;
 }
 
-export async function linkContractsToVerifiedPoliticians(
-  db: Database,
-  items: VerifiedPoliticianCompanyLink[]
-): Promise<number> {
-  if (!items.length) return 0;
+export async function linkContractsToStoredPoliticianCompanyLinks(
+  db: Database
+): Promise<{
+  availableLinks: number;
+  linkedContracts: number;
+  unlinkedContracts: number;
+  ambiguousContracts: number;
+}> {
+  const linkRows = await db
+    .select({
+      mpId: politicianCompanyLinks.mpId,
+      companyIco: companies.ico,
+      startDate: politicianCompanyLinks.startDate,
+      endDate: politicianCompanyLinks.endDate,
+    })
+    .from(politicianCompanyLinks)
+    .innerJoin(companies, eq(politicianCompanyLinks.companyId, companies.id))
+    .where(eq(politicianCompanyLinks.reviewStatus, "verified"));
 
-  const normalized = items
-    .map((item) => ({ ...item, ico: normalizeIco(item.ico) }))
-    .filter((item) => item.mpSlug && item.ico);
-  if (!normalized.length) return 0;
-
-  const mpRows = await db
-    .select({ id: mps.id, slug: mps.slug })
-    .from(mps)
-    .where(inArray(mps.slug, [...new Set(normalized.map((item) => item.mpSlug))]));
-  const mpIdBySlug = new Map(mpRows.map((mp) => [mp.slug, mp.id]));
-
-  let count = 0;
-  for (const item of normalized) {
-    const mpId = mpIdBySlug.get(item.mpSlug);
-    if (!mpId) continue;
-
-    const conditions = [
-      eq(contracts.supplierIco, item.ico),
-      or(isNull(contracts.linkedPoliticianId), eq(contracts.linkedPoliticianId, mpId)),
-    ];
-    if (item.startDate) conditions.push(gte(contracts.signedDate, item.startDate));
-    if (item.endDate) conditions.push(lte(contracts.signedDate, item.endDate));
-
-    const result = await db
-      .update(contracts)
-      .set({ linkedPoliticianId: mpId })
-      .where(and(...conditions))
-      .returning({ id: contracts.id });
-    count += result.length;
+  if (!linkRows.length) {
+    return {
+      availableLinks: 0,
+      linkedContracts: 0,
+      unlinkedContracts: 0,
+      ambiguousContracts: 0,
+    };
   }
 
-  return count;
+  const contractRows = await db
+    .select({
+      id: contracts.id,
+      supplierIco: contracts.supplierIco,
+      signedDate: contracts.signedDate,
+      linkedPoliticianId: contracts.linkedPoliticianId,
+    })
+    .from(contracts);
+
+  const resolution = resolveStoredPoliticianCompanyLinks(contractRows, linkRows);
+  const assignmentBatches = new Map<
+    string,
+    {
+      mpId: number;
+      expectedLinkedPoliticianId: number | null;
+      contractIds: number[];
+    }
+  >();
+  for (const assignment of resolution.assignments) {
+    const key = `${assignment.mpId}|${assignment.expectedLinkedPoliticianId ?? "null"}`;
+    const assignmentBatch = assignmentBatches.get(key) ?? {
+      mpId: assignment.mpId,
+      expectedLinkedPoliticianId: assignment.expectedLinkedPoliticianId,
+      contractIds: [],
+    };
+    assignmentBatch.contractIds.push(assignment.contractId);
+    assignmentBatches.set(key, assignmentBatch);
+  }
+
+  let linkedContracts = 0;
+  const sortedAssignmentBatches = [...assignmentBatches.values()].sort((left, right) =>
+    left.mpId - right.mpId ||
+    (left.expectedLinkedPoliticianId ?? -1) - (right.expectedLinkedPoliticianId ?? -1)
+  );
+  for (const { mpId, expectedLinkedPoliticianId, contractIds } of sortedAssignmentBatches) {
+    for (const batch of chunks(contractIds, CHUNK)) {
+      const result = await db
+        .update(contracts)
+        .set({ linkedPoliticianId: mpId })
+        .where(and(
+          expectedLinkedPoliticianId === null
+            ? isNull(contracts.linkedPoliticianId)
+            : eq(contracts.linkedPoliticianId, expectedLinkedPoliticianId),
+          inArray(contracts.id, batch)
+        ))
+        .returning({ id: contracts.id });
+      linkedContracts += result.length;
+    }
+  }
+
+  let unlinkedContracts = 0;
+  const removalsByExpectedMp = new Map<number, number[]>();
+  for (const removal of resolution.removals) {
+    const contractIds = removalsByExpectedMp.get(removal.expectedLinkedPoliticianId) ?? [];
+    contractIds.push(removal.contractId);
+    removalsByExpectedMp.set(removal.expectedLinkedPoliticianId, contractIds);
+  }
+  for (const [expectedLinkedPoliticianId, contractIds] of removalsByExpectedMp) {
+    for (const batch of chunks(contractIds, CHUNK)) {
+      const result = await db
+        .update(contracts)
+        .set({ linkedPoliticianId: null })
+        .where(and(
+          eq(contracts.linkedPoliticianId, expectedLinkedPoliticianId),
+          inArray(contracts.id, batch)
+        ))
+        .returning({ id: contracts.id });
+      unlinkedContracts += result.length;
+    }
+  }
+
+  return {
+    availableLinks: linkRows.length,
+    linkedContracts,
+    unlinkedContracts,
+    ambiguousContracts: resolution.ambiguousContractIds.length,
+  };
 }
 
 export async function upsertContracts(
@@ -309,7 +483,7 @@ export async function upsertContracts(
     const result = await db
       .insert(contracts)
       .values(values)
-      .onConflictDoNothing()
+      .onConflictDoNothing({ target: contracts.sourceUrl })
       .returning({ id: contracts.id });
 
     count += result.length;

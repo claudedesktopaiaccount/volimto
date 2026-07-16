@@ -3,9 +3,9 @@
 
 import * as cheerio from "cheerio";
 import type { AnyNode } from "domhandler";
-import type { ScrapedCompany, ScrapedContract, ScrapedDonation } from "@/lib/opendata-types";
+import type { ScrapedCompany, ScrapedContract } from "@/lib/opendata-types";
 
-export type { ScrapedCompany, ScrapedContract, ScrapedDonation } from "@/lib/opendata-types";
+export type { ScrapedCompany, ScrapedContract } from "@/lib/opendata-types";
 
 export type Fetcher = (url: string) => Promise<string>;
 export type BinaryFetcher = (url: string) => Promise<ArrayBuffer>;
@@ -105,20 +105,39 @@ function parseIsoishDate(raw: string): string | null {
 
 // RPVS Companies
 
-const RPVS_URL = "https://rpvs.gov.sk/opendatav2/PartneriVerejnehoSektora";
+const RPVS_URL = "https://rpvs.gov.sk/opendatav2/PartneriVerejnehoSektora?$expand=Partner";
+const MAX_RPVS_COMPANY_PAGES = 100;
 
 function buildRpvsDetailUrl(item: Record<string, unknown>): string | null {
   const explicit = getObjectValue(item, ["Url", "url"]);
-  if (explicit) return String(explicit).trim();
+  if (explicit) {
+    try {
+      const url = new URL(String(explicit).trim());
+      if (
+        url.protocol === "https:" &&
+        url.hostname === "rpvs.gov.sk" &&
+        url.port === "" &&
+        url.pathname.startsWith("/rpvs/Partner/")
+      ) {
+        return url.toString();
+      }
+    } catch {
+      // Fall back to the official detail URL derived from Partner.Id.
+    }
+  }
 
-  const id = getObjectValue(item, ["Id", "id"]);
-  if (!id) return null;
-  return `https://rpvs.gov.sk/rpvs/Partner/Partner/Detail/${String(id).trim()}`;
+  const partner = getObjectValue(item, ["Partner", "partner"]);
+  if (!partner || typeof partner !== "object") return null;
+  const partnerId = getObjectValue(partner as Record<string, unknown>, ["Id", "id"]);
+  if (!partnerId) return null;
+  return `https://rpvs.gov.sk/rpvs/Partner/Partner/Detail/${String(partnerId).trim()}`;
 }
 
 /**
  * Fetch companies from RPVS OpenData JSON endpoint.
- * Returns up to `limit` records. Returns partial results on later-page errors.
+ * Returns up to `limit` records. Pagination is atomic: a failed or malformed
+ * later page rejects the scrape instead of returning an apparently successful
+ * truncated result.
  */
 export async function scrapeRpvsCompanies(
   limit: number,
@@ -127,15 +146,24 @@ export async function scrapeRpvsCompanies(
   const fetch_ = fetcher ?? defaultFetcher;
   const results: ScrapedCompany[] = [];
   const seenIcos = new Set<string>();
+  const visitedUrls = new Set<string>();
   let url: string | null = RPVS_URL;
+  let pageNumber = 0;
 
   while (url && results.length < limit) {
+    if (visitedUrls.has(url)) throw new Error("RPVS company pagination loop detected");
+    if (visitedUrls.size >= MAX_RPVS_COMPANY_PAGES) {
+      throw new Error("RPVS company pagination exceeded the safety limit");
+    }
+    visitedUrls.add(url);
+    pageNumber++;
+
     let raw: string;
     try {
       raw = await fetch_(url);
     } catch (err) {
       console.warn("[scraper/opendata] RPVS fetch failed:", err);
-      return results;
+      throw new Error(`RPVS company fetch failed on page ${pageNumber}`, { cause: err });
     }
 
     let data: unknown;
@@ -143,7 +171,9 @@ export async function scrapeRpvsCompanies(
       data = JSON.parse(raw);
     } catch (err) {
       console.warn("[scraper/opendata] RPVS JSON parse failed:", err);
-      return results;
+      throw new Error(`RPVS company JSON parse failed on page ${pageNumber}`, {
+        cause: err,
+      });
     }
 
     const records = Array.isArray(data)
@@ -154,7 +184,7 @@ export async function scrapeRpvsCompanies(
 
     if (!records) {
       console.warn("[scraper/opendata] RPVS response is not an array or OData wrapper");
-      return results;
+      throw new Error(`Malformed RPVS company response on page ${pageNumber}`);
     }
 
     for (const item of records) {
@@ -196,13 +226,35 @@ export async function scrapeRpvsCompanies(
       results.push({ ico, name, legalForm, rpvsUboUrl, addressSk });
     }
 
-    url =
-      !Array.isArray(data) && data && typeof data === "object"
-        ? String((data as Record<string, unknown>)["@odata.nextLink"] ?? "").trim() || null
-        : null;
+    if (Array.isArray(data)) {
+      url = null;
+      continue;
+    }
+
+    const nextLink = (data as Record<string, unknown>)["@odata.nextLink"];
+    if (nextLink === undefined || nextLink === null || nextLink === "") {
+      url = null;
+    } else if (typeof nextLink === "string" && nextLink.trim()) {
+      url = safeRpvsCompanyNextLink(nextLink);
+    } else {
+      throw new Error(`Malformed RPVS company nextLink on page ${pageNumber}`);
+    }
   }
 
   return results;
+}
+
+function safeRpvsCompanyNextLink(raw: string): string {
+  const url = new URL(raw, RPVS_URL);
+  if (
+    url.protocol !== "https:" ||
+    url.hostname !== "rpvs.gov.sk" ||
+    url.port !== "" ||
+    url.pathname !== "/opendatav2/PartneriVerejnehoSektora"
+  ) {
+    throw new Error("Unsafe RPVS company nextLink");
+  }
+  return url.toString();
 }
 
 // Public Contracts (CRZ)
@@ -350,6 +402,7 @@ function parseCrzCsv(raw: string, limit: number): ScrapedContract[] {
     return -1;
   };
 
+  const iId = col(["id"]);
   const iContractNumber = col(["zmluvacislo", "cislo"]);
   const iTitle = col(["predmet"]);
   const iAuthority = col(["objednavatelnazov", "objednavatel", "contracting"]);
@@ -400,8 +453,11 @@ function parseCrzCsv(raw: string, limit: number): ScrapedContract[] {
       iAuthority >= 0
         ? (fields[iAuthority] ?? "").trim()
         : (iAuthIco >= 0 ? fields[iAuthIco] ?? "" : "");
-    const sourceUrl =
-      iUrl >= 0 ? (fields[iUrl] ?? "").trim() || CRZ_LEGACY_CSV_URL : CRZ_LEGACY_CSV_URL;
+    const exportedUrl = iUrl >= 0 ? (fields[iUrl] ?? "").trim() : "";
+    const recordId = iId >= 0 ? (fields[iId] ?? "").trim() : "";
+    const sourceUrl = exportedUrl || (/^\d+$/.test(recordId)
+      ? `https://www.crz.gov.sk/zmluva/${encodeURIComponent(recordId)}/`
+      : CRZ_LEGACY_CSV_URL);
 
     results.push({
       contractNumber,
@@ -446,148 +502,4 @@ export async function scrapePublicContracts(
   }
 
   return parseCrzCsv(raw, limit);
-}
-
-// Known Donations (static seed)
-// Source: publicly available annual party financing reports
-// published by Ministry of Interior SR, years 2019-2023.
-// URLs reference current official MV SR party register detail pages.
-
-const PARTY_REGISTER_SOURCE_URLS: Record<string, string> = {
-  "smer-sd": "https://rez.vs.minv.sk/PolitickeStrany/detail?id_spolok=153097",
-  ps: "https://rez.vs.minv.sk/PolitickeStrany/detail?id_spolok=218725",
-  "hlas-sd": "https://rez.vs.minv.sk/PolitickeStrany/detail?id_spolok=227017",
-  kdh: "https://rez.vs.minv.sk/PolitickeStrany/detail?id_spolok=152973",
-  sns: "https://rez.vs.minv.sk/PolitickeStrany/detail?id_spolok=152976",
-  sas: "https://rez.vs.minv.sk/PolitickeStrany/detail?id_spolok=153180",
-  slovensko: "https://rez.vs.minv.sk/PolitickeStrany/detail?id_spolok=201471",
-};
-
-function partyRegisterSourceUrl(partyId: string): string {
-  return PARTY_REGISTER_SOURCE_URLS[partyId] ?? "https://rez.vs.minv.sk/PolitickeStrany";
-}
-
-export function getKnownDonations(): ScrapedDonation[] {
-  return [
-    {
-      partyId: "smer-sd",
-      donorName: "TIPOS, národná lotériová spoločnosť, a.s.",
-      donorIco: "31340822",
-      amountEur: 50000,
-      donationDate: "2019-03-15",
-      sourceUrl: partyRegisterSourceUrl("smer-sd"),
-    },
-    {
-      partyId: "smer-sd",
-      donorName: "AGROFERT SK, s.r.o.",
-      donorIco: "44682484",
-      amountEur: 20000,
-      donationDate: "2020-06-01",
-      sourceUrl: partyRegisterSourceUrl("smer-sd"),
-    },
-    {
-      partyId: "smer-sd",
-      donorName: "Juraj Blanár",
-      donorIco: null,
-      amountEur: 5000,
-      donationDate: "2021-04-10",
-      sourceUrl: partyRegisterSourceUrl("smer-sd"),
-    },
-    {
-      partyId: "ps",
-      donorName: "Michal Truban",
-      donorIco: null,
-      amountEur: 10000,
-      donationDate: "2022-01-20",
-      sourceUrl: partyRegisterSourceUrl("ps"),
-    },
-    {
-      partyId: "ps",
-      donorName: "Irena Bihariová",
-      donorIco: null,
-      amountEur: 3000,
-      donationDate: "2022-05-05",
-      sourceUrl: partyRegisterSourceUrl("ps"),
-    },
-    {
-      partyId: "ps",
-      donorName: "Via Iuris, o.z.",
-      donorIco: "31812341",
-      amountEur: 15000,
-      donationDate: "2023-02-14",
-      sourceUrl: partyRegisterSourceUrl("ps"),
-    },
-    {
-      partyId: "hlas-sd",
-      donorName: "Peter Pellegrini",
-      donorIco: null,
-      amountEur: 25000,
-      donationDate: "2021-11-01",
-      sourceUrl: partyRegisterSourceUrl("hlas-sd"),
-    },
-    {
-      partyId: "hlas-sd",
-      donorName: "EASTWAY, s.r.o.",
-      donorIco: "52641987",
-      amountEur: 30000,
-      donationDate: "2022-09-30",
-      sourceUrl: partyRegisterSourceUrl("hlas-sd"),
-    },
-    {
-      partyId: "kdh",
-      donorName: "Konferencia biskupov Slovenska",
-      donorIco: "00687855",
-      amountEur: 8000,
-      donationDate: "2020-12-01",
-      sourceUrl: partyRegisterSourceUrl("kdh"),
-    },
-    {
-      partyId: "kdh",
-      donorName: "Milan Majerský",
-      donorIco: null,
-      amountEur: 5000,
-      donationDate: "2023-03-22",
-      sourceUrl: partyRegisterSourceUrl("kdh"),
-    },
-    {
-      partyId: "sns",
-      donorName: "Ján Slota",
-      donorIco: null,
-      amountEur: 12000,
-      donationDate: "2019-08-15",
-      sourceUrl: partyRegisterSourceUrl("sns"),
-    },
-    {
-      partyId: "sns",
-      donorName: "GLOBEX SK, s.r.o.",
-      donorIco: "47920133",
-      amountEur: 18000,
-      donationDate: "2021-07-07",
-      sourceUrl: partyRegisterSourceUrl("sns"),
-    },
-    {
-      partyId: "sas",
-      donorName: "Richard Sulík",
-      donorIco: null,
-      amountEur: 10000,
-      donationDate: "2020-02-28",
-      sourceUrl: partyRegisterSourceUrl("sas"),
-    },
-    {
-      partyId: "sas",
-      donorName: "ESET, spol. s r.o.",
-      donorIco: "31333532",
-      amountEur: 40000,
-      donationDate: "2022-11-10",
-      sourceUrl: partyRegisterSourceUrl("sas"),
-    },
-    {
-      partyId: "slovensko",
-      donorName: "Igor Matovič",
-      donorIco: null,
-      amountEur: 100000,
-      donationDate: "2019-12-01",
-      sourceUrl: partyRegisterSourceUrl("slovensko"),
-    },
-  ];
 }

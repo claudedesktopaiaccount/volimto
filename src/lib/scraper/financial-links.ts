@@ -1,9 +1,4 @@
 import type { Database } from "@/lib/db";
-import {
-  linkContractsToVerifiedPoliticians,
-  upsertVerifiedPoliticianCompanyLinks,
-} from "@/lib/db/opendata";
-import type { VerifiedPoliticianCompanyLink } from "@/lib/verified-financial-links";
 import type { PreparedScandal } from "./scandals";
 
 const GEMINI_MODEL = "gemini-2.5-flash-lite";
@@ -29,8 +24,18 @@ interface GeminiFinancialLinkResponse {
   links?: unknown;
 }
 
+export interface FinancialLinkCandidate {
+  mpSlug: string;
+  ico: string;
+  companyName: string;
+  relationship: string;
+  startDate: string;
+  endDate: null;
+  sourceUrl: string;
+}
+
 export async function extractAndStoreFinancialLinksFromScandals(
-  db: Database,
+  _db: Database,
   items: PreparedScandal[],
   apiKey: string | undefined
 ): Promise<FinancialLinkExtractionResult> {
@@ -44,7 +49,7 @@ export async function extractAndStoreFinancialLinksFromScandals(
     };
   }
 
-  const candidates: VerifiedPoliticianCompanyLink[] = [];
+  const candidates: FinancialLinkCandidate[] = [];
   let analyzed = 0;
 
   for (const item of items) {
@@ -55,22 +60,22 @@ export async function extractAndStoreFinancialLinksFromScandals(
   }
 
   const deduped = dedupeLinks(candidates);
-  const upserted = await upsertVerifiedPoliticianCompanyLinks(db, deduped);
-  const linkedContracts = await linkContractsToVerifiedPoliticians(db, deduped);
 
   return {
     analyzed,
     candidates: deduped.length,
-    upserted,
-    linkedContracts,
-    skippedReason: null,
+    // An LLM extraction is a review candidate, never verified evidence. The
+    // public linker only consumes the independently audited RPVS/NRSR path.
+    upserted: 0,
+    linkedContracts: 0,
+    skippedReason: "human_review_required",
   };
 }
 
 async function extractFinancialLinksWithGemini(
   item: PreparedScandal,
   apiKey: string
-): Promise<VerifiedPoliticianCompanyLink[]> {
+): Promise<FinancialLinkCandidate[]> {
   const sourceUrl = item.sources[0]?.url;
   if (!sourceUrl) return [];
 
@@ -97,7 +102,7 @@ async function extractFinancialLinksWithGemini(
 export function parseGeminiFinancialLinks(
   raw: string,
   item: Pick<PreparedScandal, "mpMatches" | "pageText" | "startDate" | "sources">
-): VerifiedPoliticianCompanyLink[] {
+): FinancialLinkCandidate[] {
   const json = raw.match(/\{[\s\S]*\}/)?.[0] ?? raw;
   let parsed: GeminiFinancialLinkResponse;
   try {
@@ -111,9 +116,8 @@ export function parseGeminiFinancialLinks(
   const allowedMpSlugs = new Set(item.mpMatches.map((mp) => mp.slug));
   const sourceUrl = item.sources[0]?.url;
   if (!sourceUrl) return [];
-  const normalizedText = normalizeForEvidence(item.pageText);
 
-  return parsed.links.flatMap((value): VerifiedPoliticianCompanyLink[] => {
+  return parsed.links.flatMap((value): FinancialLinkCandidate[] => {
     const link = value as GeminiFinancialLink;
     const mpSlug = stringValue(link.mpSlug);
     const ico = normalizeIco(stringValue(link.ico));
@@ -122,7 +126,7 @@ export function parseGeminiFinancialLinks(
     const evidenceExcerptSk = stringValue(link.evidenceExcerptSk);
 
     if (!mpSlug || !allowedMpSlugs.has(mpSlug)) return [];
-    if (!ico || !normalizedText.includes(ico)) return [];
+    if (!ico || !containsExactIco(item.pageText, ico)) return [];
     if (!companyName || companyName.length < 3) return [];
     if (evidenceExcerptSk && !normalizeForEvidence(item.pageText).includes(normalizeForEvidence(evidenceExcerptSk).slice(0, 40))) {
       return [];
@@ -166,7 +170,7 @@ function buildFinancialLinkPrompt(item: PreparedScandal) {
   ].join("\n");
 }
 
-function dedupeLinks(items: VerifiedPoliticianCompanyLink[]) {
+function dedupeLinks(items: FinancialLinkCandidate[]) {
   return [
     ...new Map(
       items.map((item) => [
@@ -201,5 +205,11 @@ function normalizeForEvidence(value: string) {
     .toLowerCase()
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "")
-    .replace(/\D/g, "");
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function containsExactIco(text: string, expectedIco: string) {
+  const candidates = text.match(/\d(?:[\d\s.\-/]{4,16}\d)?/g) ?? [];
+  return candidates.some((candidate) => normalizeIco(candidate) === expectedIco);
 }
